@@ -7,8 +7,12 @@ import "./index.css";
 import { store } from "./app/store";
 import router from "./app/router";
 import { initializeTheme } from "./features/theme/themeSlice";
+import { fetchCurrentUser } from "./features/auth/authSlice";
 
 store.dispatch(initializeTheme());
+if (localStorage.getItem("token")) {
+  store.dispatch(fetchCurrentUser());
+}
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <Provider store={store}>

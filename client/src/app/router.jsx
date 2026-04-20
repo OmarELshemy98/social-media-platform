@@ -6,6 +6,9 @@ import RegisterPage from "../pages/RegisterPage";
 import FeedPage from "../pages/FeedPage";
 import ProfilePage from "../pages/ProfilePage";
 import NotFoundPage from "../pages/NotFoundPage";
+import SearchPage from "../pages/SearchPage";
+import NotificationsPage from "../pages/NotificationsPage";
+import MessagesPage from "../pages/MessagesPage";
 
 const router = createBrowserRouter([
   { path: "/login", element: <LoginPage /> },
@@ -18,6 +21,10 @@ const router = createBrowserRouter([
         children: [
           { path: "/", element: <FeedPage /> },
           { path: "/profile", element: <ProfilePage /> },
+          { path: "/profile/:username", element: <ProfilePage /> },
+          { path: "/search", element: <SearchPage /> },
+          { path: "/notifications", element: <NotificationsPage /> },
+          { path: "/messages", element: <MessagesPage /> },
         ],
       },
     ],

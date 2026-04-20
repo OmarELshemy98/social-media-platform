@@ -1,0 +1,75 @@
+import { useState } from "react";
+import { Badge, Button, Card, Form } from "react-bootstrap";
+import { Link } from "react-router-dom";
+
+const PostCard = ({ post, currentUserId, onLike, onComment, onDelete }) => {
+  const [comment, setComment] = useState("");
+  const liked = post.likes?.some((id) => String(id) === String(currentUserId));
+  const isOwner = String(post.author?._id || post.author) === String(currentUserId);
+
+  const submitComment = (e) => {
+    e.preventDefault();
+    if (!comment.trim()) return;
+    onComment(post._id, comment.trim());
+    setComment("");
+  };
+
+  return (
+    <Card className="dashboard-card">
+      <Card.Body>
+        <div className="d-flex justify-content-between align-items-start">
+          <div>
+            <Link to={`/profile/${post.author?.username}`} className="fw-semibold">
+              @{post.author?.username}
+            </Link>
+            <p className="mb-1">{post.content}</p>
+          </div>
+          {isOwner && (
+            <Button size="sm" variant="outline-danger" onClick={() => onDelete(post._id)}>
+              Delete
+            </Button>
+          )}
+        </div>
+
+        <div className="d-flex gap-2 mb-2">
+          {(post.tags || []).map((tag) => (
+            <Badge key={`${post._id}-${tag}`} bg="secondary">
+              #{tag}
+            </Badge>
+          ))}
+        </div>
+
+        <div className="d-flex align-items-center gap-2 mb-3">
+          <Button size="sm" variant={liked ? "primary" : "outline-primary"} onClick={() => onLike(post._id)}>
+            {liked ? "Unlike" : "Like"} ({post.likes?.length || 0})
+          </Button>
+          <span className="small text-muted">Comments: {post.comments?.length || 0}</span>
+        </div>
+
+        <Form onSubmit={submitComment} className="mb-2">
+          <div className="d-flex gap-2">
+            <Form.Control
+              size="sm"
+              value={comment}
+              placeholder="Write a comment..."
+              onChange={(e) => setComment(e.target.value)}
+            />
+            <Button type="submit" size="sm">
+              Send
+            </Button>
+          </div>
+        </Form>
+
+        <div className="small">
+          {(post.comments || []).slice(0, 3).map((c) => (
+            <div key={c._id} className="py-1 border-top">
+              <strong>@{c.author?.username}</strong> {c.content}
+            </div>
+          ))}
+        </div>
+      </Card.Body>
+    </Card>
+  );
+};
+
+export default PostCard;

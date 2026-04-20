@@ -29,6 +29,15 @@ const AppLayout = () => {
               <Nav.Link as={NavLink} to="/profile">
                 Profile
               </Nav.Link>
+              <Nav.Link as={NavLink} to="/search">
+                Search
+              </Nav.Link>
+              <Nav.Link as={NavLink} to="/notifications">
+                Notifications
+              </Nav.Link>
+              <Nav.Link as={NavLink} to="/messages">
+                Messages
+              </Nav.Link>
             </Nav>
             <div className="d-flex align-items-center gap-2">
               <span className="small">Hi, {user?.name || "User"}</span>
