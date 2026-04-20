@@ -1,0 +1,64 @@
+:root {
+  --bg: #f6f8fb;
+  --surface: #ffffff;
+  --text: #1c2434;
+  --muted: #697589;
+  --border: #d8dfeb;
+  --shadow: 0 10px 30px rgba(26, 39, 73, 0.08);
+}
+
+[data-theme="dark"] {
+  --bg: #111827;
+  --surface: #1f2937;
+  --text: #e5e7eb;
+  --muted: #9ca3af;
+  --border: #374151;
+  --shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: "Inter", "Segoe UI", sans-serif;
+}
+
+a {
+  text-decoration: none;
+}
+
+.app-shell {
+  min-height: 100vh;
+  background: var(--bg);
+}
+
+.dashboard-nav,
+.dashboard-card,
+.auth-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+  border-radius: 1rem;
+}
+
+.dashboard-nav {
+  margin: 1rem;
+}
+
+.dashboard-card {
+  margin-bottom: 1rem;
+}
+
+.auth-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+}
+
+.text-muted {
+  color: var(--muted) !important;
+}
