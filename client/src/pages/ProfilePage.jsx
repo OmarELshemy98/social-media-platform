@@ -4,6 +4,7 @@ import { useDispatch } from "react-redux";
 import { useSelector } from "react-redux";
 import { useParams } from "react-router-dom";
 import { fetchProfileByUsername, updateMyProfile } from "../features/profile/profileSlice";
+import { uploadImage } from "../services/uploadService";
 
 const ProfilePage = () => {
   const dispatch = useDispatch();
@@ -12,6 +13,7 @@ const ProfilePage = () => {
   const { profileUser, profilePosts } = useSelector((state) => state.profile);
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState({ name: "", bio: "", avatarUrl: "" });
+  const [avatarFile, setAvatarFile] = useState(null);
 
   const targetUsername = username || user?.username;
   const isOwner = targetUsername === user?.username;
@@ -53,10 +55,18 @@ const ProfilePage = () => {
               className="mt-3"
               onSubmit={(e) => {
                 e.preventDefault();
-                dispatch(updateMyProfile(form)).then(() => {
-                  setEditing(false);
-                  dispatch(fetchProfileByUsername(targetUsername));
-                });
+                const submit = async () => {
+                  let avatarUrl = form.avatarUrl;
+                  if (avatarFile) {
+                    avatarUrl = await uploadImage(avatarFile);
+                  }
+                  dispatch(updateMyProfile({ ...form, avatarUrl })).then(() => {
+                    setEditing(false);
+                    dispatch(fetchProfileByUsername(targetUsername));
+                    setAvatarFile(null);
+                  });
+                };
+                submit();
               }}
             >
               <Form.Control
@@ -76,6 +86,12 @@ const ProfilePage = () => {
                 value={form.avatarUrl}
                 onChange={(e) => setForm({ ...form, avatarUrl: e.target.value })}
                 placeholder="Avatar URL"
+              />
+              <Form.Control
+                className="mb-2"
+                type="file"
+                accept="image/*"
+                onChange={(e) => setAvatarFile(e.target.files?.[0] || null)}
               />
               <Button type="submit">Save Changes</Button>
             </Form>

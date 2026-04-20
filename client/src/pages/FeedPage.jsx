@@ -19,6 +19,10 @@ const FeedPage = () => {
 
   useEffect(() => {
     dispatch(fetchFeedPosts());
+    const interval = setInterval(() => {
+      dispatch(fetchFeedPosts());
+    }, 12000);
+    return () => clearInterval(interval);
   }, [dispatch]);
 
   const handleLike = async (postId) => {

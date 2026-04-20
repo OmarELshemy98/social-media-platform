@@ -5,6 +5,7 @@ const profileRoutes = require("./profileRoutes");
 const notificationRoutes = require("./notificationRoutes");
 const searchRoutes = require("./searchRoutes");
 const messageRoutes = require("./messageRoutes");
+const uploadRoutes = require("./uploadRoutes");
 
 const router = express.Router();
 
@@ -18,5 +19,6 @@ router.use("/profiles", profileRoutes);
 router.use("/notifications", notificationRoutes);
 router.use("/search", searchRoutes);
 router.use("/messages", messageRoutes);
+router.use("/upload", uploadRoutes);
 
 module.exports = router;

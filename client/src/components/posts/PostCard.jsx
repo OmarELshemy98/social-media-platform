@@ -23,6 +23,7 @@ const PostCard = ({ post, currentUserId, onLike, onComment, onDelete }) => {
               @{post.author?.username}
             </Link>
             <p className="mb-1">{post.content}</p>
+            {post.imageUrl && <img src={post.imageUrl} alt="post" className="post-image mb-2" />}
           </div>
           {isOwner && (
             <Button size="sm" variant="outline-danger" onClick={() => onDelete(post._id)}>

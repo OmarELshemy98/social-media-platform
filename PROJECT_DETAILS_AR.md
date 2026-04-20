@@ -65,6 +65,12 @@
 - حفظ الثيم في LocalStorage
 - Dashboard-style layout responsive باستخدام Bootstrap + Custom CSS
 
+### 8) Uploads & Email
+- رفع صور فعلي للبوستات والصورة الشخصية عبر `Multer`
+- Static serving للملفات المرفوعة من السيرفر
+- إرسال Welcome email عند التسجيل عبر `Nodemailer`
+- fallback `jsonTransport` للتطوير المحلي بدون SMTP
+
 ---
 
 ## Backend Architecture
@@ -96,7 +102,7 @@
 ## 1) تشغيل السيرفر
 1. ادخل إلى `server/`
 2. انسخ `.env.example` إلى `.env`
-3. عدّل القيم (خصوصاً `MONGODB_URI` و `JWT_SECRET`)
+3. عدّل القيم (خصوصاً `MONGODB_URI` و `JWT_SECRET` وبيانات SMTP لو هتفعّل الإرسال الحقيقي)
 4. نفذ:
    - `npm install`
    - `npm run dev`

@@ -1,6 +1,7 @@
 const bcrypt = require("bcryptjs");
 const User = require("../models/User");
 const generateToken = require("../utils/generateToken");
+const { sendWelcomeEmail } = require("../config/mailer");
 
 const registerUser = async (req, res, next) => {
   try {
@@ -23,6 +24,11 @@ const registerUser = async (req, res, next) => {
       username: username.toLowerCase(),
       email,
       password: hashedPassword,
+    });
+
+    // Email is non-blocking for signup success and can use jsonTransport in local.
+    sendWelcomeEmail({ name: user.name, email: user.email }).catch((err) => {
+      console.error(`Welcome email failed: ${err.message}`);
     });
 
     const token = generateToken({ id: user._id });

@@ -18,6 +18,14 @@ const MessagesPage = () => {
     dispatch(fetchConversations());
   }, [dispatch]);
 
+  useEffect(() => {
+    if (!activeConversationId) return undefined;
+    const interval = setInterval(() => {
+      dispatch(fetchConversationMessages(activeConversationId));
+    }, 8000);
+    return () => clearInterval(interval);
+  }, [dispatch, activeConversationId]);
+
   const activeConversation = useMemo(
     () => conversations.find((item) => item._id === activeConversationId),
     [conversations, activeConversationId]
@@ -57,8 +65,24 @@ const MessagesPage = () => {
             <h5>Messages</h5>
             <div className="messages-box mb-3">
               {messages.map((message) => (
-                <div key={message._id} className="py-1">
-                  <strong>@{message.sender?.username}:</strong> {message.content}
+                <div
+                  key={message._id}
+                  className={`chat-bubble-row ${
+                    String(message.sender?._id) === String(user.id || user._id)
+                      ? "chat-bubble-row--mine"
+                      : ""
+                  }`}
+                >
+                  <div
+                    className={`chat-bubble ${
+                      String(message.sender?._id) === String(user.id || user._id)
+                        ? "chat-bubble--mine"
+                        : "chat-bubble--other"
+                    }`}
+                  >
+                    <div className="chat-author">@{message.sender?.username}</div>
+                    {message.content}
+                  </div>
                 </div>
               ))}
             </div>

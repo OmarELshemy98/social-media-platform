@@ -13,6 +13,10 @@ const NotificationsPage = () => {
 
   useEffect(() => {
     dispatch(fetchNotifications());
+    const interval = setInterval(() => {
+      dispatch(fetchNotifications());
+    }, 15000);
+    return () => clearInterval(interval);
   }, [dispatch]);
 
   return (

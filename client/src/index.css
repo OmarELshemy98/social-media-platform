@@ -71,3 +71,44 @@ a {
   border-radius: 0.75rem;
   padding: 0.75rem;
 }
+
+.post-image {
+  width: min(100%, 480px);
+  max-height: 360px;
+  object-fit: cover;
+  border-radius: 0.75rem;
+  border: 1px solid var(--border);
+}
+
+.chat-bubble-row {
+  display: flex;
+  justify-content: flex-start;
+  margin-bottom: 0.5rem;
+}
+
+.chat-bubble-row--mine {
+  justify-content: flex-end;
+}
+
+.chat-bubble {
+  max-width: 72%;
+  padding: 0.6rem 0.8rem;
+  border-radius: 0.9rem;
+  font-size: 0.92rem;
+}
+
+.chat-bubble--mine {
+  background: #3b82f6;
+  color: #fff;
+}
+
+.chat-bubble--other {
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+
+.chat-author {
+  font-size: 0.78rem;
+  opacity: 0.8;
+  margin-bottom: 0.15rem;
+}

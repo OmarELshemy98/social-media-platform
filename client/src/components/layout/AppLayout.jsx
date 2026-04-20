@@ -1,14 +1,25 @@
-import { Container, Nav, Navbar, Button } from "react-bootstrap";
+import { useEffect } from "react";
+import { Badge, Button, Container, Nav, Navbar } from "react-bootstrap";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { logout } from "../../features/auth/authSlice";
 import { toggleTheme } from "../../features/theme/themeSlice";
+import { fetchNotifications } from "../../features/notifications/notificationsSlice";
 
 const AppLayout = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { user } = useSelector((state) => state.auth);
   const { mode } = useSelector((state) => state.theme);
+  const { unreadCount } = useSelector((state) => state.notifications);
+
+  useEffect(() => {
+    dispatch(fetchNotifications());
+    const interval = setInterval(() => {
+      dispatch(fetchNotifications());
+    }, 15000);
+    return () => clearInterval(interval);
+  }, [dispatch]);
 
   const handleLogout = () => {
     dispatch(logout());
@@ -34,6 +45,11 @@ const AppLayout = () => {
               </Nav.Link>
               <Nav.Link as={NavLink} to="/notifications">
                 Notifications
+                {unreadCount > 0 && (
+                  <Badge pill bg="danger" className="ms-1">
+                    {unreadCount}
+                  </Badge>
+                )}
               </Nav.Link>
               <Nav.Link as={NavLink} to="/messages">
                 Messages
