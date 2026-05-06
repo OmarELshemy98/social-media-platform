@@ -10,6 +10,7 @@ import LoginPage from "../pages/LoginPage";
 import RegisterPage from "../pages/RegisterPage";
 import FeedPage from "../pages/FeedPage";
 import ProfilePage from "../pages/ProfilePage";
+import PostDetailsPage from "../pages/PostDetailsPage";
 import NotFoundPage from "../pages/NotFoundPage";
 import SearchPage from "../pages/SearchPage";
 import NotificationsPage from "../pages/NotificationsPage";
@@ -28,6 +29,7 @@ const router = createBrowserRouter([
         element: <AppLayout />, // الهيكل العام للتطبيق (Nav, Footer, etc.)
         children: [
           { path: "/", element: <FeedPage /> }, // الصفحة الرئيسية
+          { path: "/posts/:postId", element: <PostDetailsPage /> }, // تفاصيل المنشور
           { path: "/profile", element: <ProfilePage /> }, // ملف المستخدم الشخصي
           { path: "/profile/:username", element: <ProfilePage /> }, // ملف شخصي لمستخدم آخر
           { path: "/search", element: <SearchPage /> }, // صفحة البحث

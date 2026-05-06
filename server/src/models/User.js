@@ -47,6 +47,10 @@ const userSchema = new mongoose.Schema(
       type: String,
       default: "",
     },
+    coverUrl: {
+      type: String,
+      default: "",
+    },
     // قائمة المتابعين
     followers: [
       {
@@ -56,6 +60,34 @@ const userSchema = new mongoose.Schema(
     ],
     // قائمة الأشخاص الذين يتابعهم المستخدم
     following: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+      },
+    ],
+    // طلبات الصداقة المرسلة
+    friendRequestsSent: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+      },
+    ],
+    // طلبات الصداقة المستلمة
+    friendRequestsReceived: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+      },
+    ],
+    // قائمة الأصدقاء
+    friends: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+      },
+    ],
+    // قائمة الحظر
+    blockedUsers: [
       {
         type: mongoose.Schema.Types.ObjectId,
         ref: "User",

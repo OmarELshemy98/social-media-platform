@@ -1,6 +1,7 @@
 const Conversation = require("../models/Conversation");
 const Message = require("../models/Message");
 const Notification = require("../models/Notification");
+const User = require("../models/User");
 
 const ensureConversation = async (userA, userB) => {
   let conversation = await Conversation.findOne({
@@ -14,6 +15,28 @@ const ensureConversation = async (userA, userB) => {
     });
   }
   return conversation;
+};
+
+const startConversationByUsername = async (req, res, next) => {
+  try {
+    const { username } = req.body;
+    const targetUser = await User.findOne({ username: username.toLowerCase() });
+
+    if (!targetUser) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    if (String(targetUser._id) === String(req.user._id)) {
+      return res.status(400).json({ message: "Cannot message yourself" });
+    }
+
+    const conversation = await ensureConversation(req.user._id, targetUser._id);
+    const populated = await conversation.populate("participants", "name username avatarUrl");
+
+    return res.status(200).json({ conversation: populated });
+  } catch (error) {
+    return next(error);
+  }
 };
 
 const getMyConversations = async (req, res, next) => {
@@ -87,4 +110,5 @@ module.exports = {
   getMyConversations,
   getMessagesByConversation,
   sendMessage,
+  startConversationByUsername,
 };

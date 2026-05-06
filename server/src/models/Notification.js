@@ -21,10 +21,10 @@ const notificationSchema = new mongoose.Schema(
       ref: "User",
       required: true,
     },
-    // نوع التنبيه (إعجاب، تعليق، رسالة)
+    // نوع التنبيه (إعجاب، تعليق، رسالة، طلب صداقة)
     type: {
       type: String,
-      enum: ["like", "comment", "message"],
+      enum: ["like", "comment", "message", "friend_request"],
       required: true,
     },
     // المنشور المتعلق بالتنبيه (إن وجد)

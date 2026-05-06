@@ -22,39 +22,72 @@ const LoginPage = () => {
   };
 
   return (
-    <Container className="auth-page">
-      <Row className="justify-content-center">
-        <Col md={6} lg={5}>
-          <Card className="auth-card">
-            <Card.Body>
-              <h3 className="mb-3">Welcome Back</h3>
-              {error && <Alert variant="danger">{error}</Alert>}
+    <Container className="auth-page py-5">
+      <Row className="justify-content-center w-100 m-0">
+        <Col xs={12} sm={10} md={8} lg={5} xl={4}>
+          <Card className="auth-card border-0 shadow-lg">
+            <Card.Body className="p-4 p-sm-5">
+              <div className="text-center mb-4">
+                <h2 className="fw-bold text-primary mb-2">SocialSphere</h2>
+                <h4 className="text-muted">Welcome Back</h4>
+                <p className="small">Please enter your details to sign in</p>
+              </div>
+
+              {error && (
+                <Alert variant="danger" className="py-2 small">
+                  {error}
+                </Alert>
+              )}
+
               <Form onSubmit={handleSubmit}>
                 <Form.Group className="mb-3">
-                  <Form.Label>Email</Form.Label>
+                  <Form.Label className="small fw-semibold">Email Address</Form.Label>
                   <Form.Control
                     type="email"
                     required
+                    placeholder="name@example.com"
+                    className="py-2"
                     value={formData.email}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                   />
                 </Form.Group>
-                <Form.Group className="mb-3">
-                  <Form.Label>Password</Form.Label>
+
+                <Form.Group className="mb-4">
+                  <div className="d-flex justify-content-between">
+                    <Form.Label className="small fw-semibold">Password</Form.Label>
+                  </div>
                   <Form.Control
                     type="password"
                     required
+                    placeholder="Enter your password"
+                    className="py-2"
                     value={formData.password}
                     onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                   />
                 </Form.Group>
-                <Button className="w-100" type="submit" disabled={status === "loading"}>
-                  {status === "loading" ? <Spinner size="sm" /> : "Login"}
+
+                <Button 
+                  className="w-100 py-2 fw-bold" 
+                  type="submit" 
+                  variant="primary"
+                  disabled={status === "loading"}
+                >
+                  {status === "loading" ? (
+                    <>
+                      <Spinner size="sm" className="me-2" />
+                      Signing in...
+                    </>
+                  ) : (
+                    "Login"
+                  )}
                 </Button>
               </Form>
-              <p className="mt-3 mb-0">
-                New here? <Link to="/register">Create an account</Link>
-              </p>
+
+              <div className="text-center mt-4">
+                <p className="small mb-0">
+                  New here? <Link to="/register" className="fw-bold text-decoration-none">Create an account</Link>
+                </p>
+              </div>
             </Card.Body>
           </Card>
         </Col>

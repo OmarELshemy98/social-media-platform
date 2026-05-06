@@ -4,6 +4,7 @@ import api from "../../services/api";
 const initialState = {
   profileUser: null,
   profilePosts: [],
+  relationship: "none", // 'none' | 'friends' | 'request_sent' | 'request_received' | 'blocked'
   status: "idle",
   error: null,
 };
@@ -16,6 +17,54 @@ export const fetchProfileByUsername = createAsyncThunk(
       return data;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || "Failed to load profile");
+    }
+  }
+);
+
+export const sendFriendRequest = createAsyncThunk(
+  "profile/sendFriendRequest",
+  async (userId, { rejectWithValue }) => {
+    try {
+      const { data } = await api.post(`/profiles/${userId}/friend-request`);
+      return data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || "Failed to send request");
+    }
+  }
+);
+
+export const acceptFriendRequest = createAsyncThunk(
+  "profile/acceptFriendRequest",
+  async (userId, { rejectWithValue }) => {
+    try {
+      const { data } = await api.post(`/profiles/${userId}/accept-request`);
+      return data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || "Failed to accept request");
+    }
+  }
+);
+
+export const unfriendUser = createAsyncThunk(
+  "profile/unfriendUser",
+  async (userId, { rejectWithValue }) => {
+    try {
+      const { data } = await api.post(`/profiles/${userId}/unfriend`);
+      return data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || "Failed to unfriend");
+    }
+  }
+);
+
+export const blockUser = createAsyncThunk(
+  "profile/blockUser",
+  async (userId, { rejectWithValue }) => {
+    try {
+      const { data } = await api.post(`/profiles/${userId}/block`);
+      return data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || "Failed to block user");
     }
   }
 );
@@ -46,10 +95,23 @@ const profileSlice = createSlice({
         state.status = "succeeded";
         state.profileUser = action.payload.user;
         state.profilePosts = action.payload.posts;
+        state.relationship = action.payload.relationship;
       })
       .addCase(fetchProfileByUsername.rejected, (state, action) => {
         state.status = "failed";
         state.error = action.payload;
+      })
+      .addCase(sendFriendRequest.fulfilled, (state) => {
+        state.relationship = "request_sent";
+      })
+      .addCase(acceptFriendRequest.fulfilled, (state) => {
+        state.relationship = "friends";
+      })
+      .addCase(unfriendUser.fulfilled, (state) => {
+        state.relationship = "none";
+      })
+      .addCase(blockUser.fulfilled, (state) => {
+        state.relationship = "blocked";
       })
       .addCase(updateMyProfile.fulfilled, (state, action) => {
         state.profileUser = action.payload;

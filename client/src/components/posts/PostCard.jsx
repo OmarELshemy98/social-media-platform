@@ -83,7 +83,13 @@ const PostCard = ({ post, currentUserId, onLike, onComment, onDelete }) => {
         <div className="small">
           {(post.comments || []).slice(0, 3).map((c) => (
             <div key={c._id} className="py-1 border-top">
-              <strong>@{c.author?.username}</strong> {c.content}
+              <Link 
+                to={`/profile/${c.author?.username}`} 
+                className="fw-bold text-decoration-none text-dark me-1"
+              >
+                @{c.author?.username}
+              </Link> 
+              {c.content}
             </div>
           ))}
         </div>

@@ -1,16 +1,19 @@
 import { useEffect, useMemo, useState } from "react";
 import { Button, Card, Col, Form, Row } from "react-bootstrap";
 import { useDispatch, useSelector } from "react-redux";
-import {
-  fetchConversationMessages,
-  fetchConversations,
-  sendMessage,
+import { 
+  fetchConversationMessages, 
+  fetchConversations, 
+  sendMessage, 
   setActiveConversation,
+  startConversationWithUser
 } from "../features/messages/messagesSlice";
 
 const MessagesPage = () => {
   const dispatch = useDispatch();
   const [draft, setDraft] = useState("");
+  const [newChatUsername, setNewChatUsername] = useState("");
+  const [showNewChat, setShowNewChat] = useState(false);
   const { conversations, messages, activeConversationId } = useSelector((state) => state.messages);
   const { user } = useSelector((state) => state.auth);
 
@@ -35,57 +38,122 @@ const MessagesPage = () => {
   );
 
   return (
-    <Row>
-      <Col md={4}>
-        <Card className="dashboard-card">
+    <Row className="g-3">
+      <Col xs={12} md={4} className={activeConversationId ? "d-none d-md-block" : ""}>
+        <Card className="dashboard-card h-100">
           <Card.Body>
-            <h5>Conversations</h5>
-            {conversations.map((c) => (
-              <Button
-                key={c._id}
-                variant={activeConversationId === c._id ? "primary" : "light"}
-                className="w-100 mb-2 text-start"
-                onClick={() => {
-                  dispatch(setActiveConversation(c._id));
-                  dispatch(fetchConversationMessages(c._id));
+            <div className="d-flex justify-content-between align-items-center mb-3">
+              <h5 className="fw-bold mb-0">Conversations</h5>
+              <Button 
+                variant="outline-primary" 
+                size="sm" 
+                className="rounded-circle"
+                onClick={() => setShowNewChat(!showNewChat)}
+              >
+                +
+              </Button>
+            </div>
+
+            {showNewChat && (
+              <Form 
+                className="mb-3"
+                onSubmit={async (e) => {
+                  e.preventDefault();
+                  if (newChatUsername.trim()) {
+                    await dispatch(startConversationWithUser(newChatUsername.trim()));
+                    setNewChatUsername("");
+                    setShowNewChat(false);
+                  }
                 }}
               >
-                {c.participants
-                  .filter((p) => String(p._id) !== String(user.id || user._id))
-                  .map((p) => p.username)
-                  .join(", ")}
-              </Button>
-            ))}
+                <div className="d-flex gap-2">
+                  <Form.Control 
+                    size="sm"
+                    placeholder="Enter username..."
+                    value={newChatUsername}
+                    onChange={(e) => setNewChatUsername(e.target.value)}
+                  />
+                  <Button type="submit" size="sm" variant="primary">Start</Button>
+                </div>
+              </Form>
+            )}
+
+            <div className="conversations-list overflow-auto" style={{ maxHeight: '70vh' }}>
+              {conversations.length === 0 ? (
+                <p className="text-muted small text-center py-4">No conversations yet.</p>
+              ) : (
+                conversations.map((c) => (
+                  <Button
+                    key={c._id}
+                    variant={activeConversationId === c._id ? "primary" : "light"}
+                    className="w-100 mb-2 text-start p-3 border-0 shadow-sm"
+                    onClick={() => {
+                      dispatch(setActiveConversation(c._id));
+                      dispatch(fetchConversationMessages(c._id));
+                    }}
+                  >
+                    <div className="fw-bold">
+                      {c.participants
+                        .filter((p) => String(p._id) !== String(user.id || user._id))
+                        .map((p) => p.username)
+                        .join(", ")}
+                    </div>
+                    <div className="small text-truncate opacity-75">Click to view messages</div>
+                  </Button>
+                ))
+              )}
+            </div>
           </Card.Body>
         </Card>
       </Col>
-      <Col md={8}>
-        <Card className="dashboard-card">
-          <Card.Body>
-            <h5>Messages</h5>
-            <div className="messages-box mb-3">
-              {messages.map((message) => (
-                <div
-                  key={message._id}
-                  className={`chat-bubble-row ${
-                    String(message.sender?._id) === String(user.id || user._id)
-                      ? "chat-bubble-row--mine"
-                      : ""
-                  }`}
-                >
+      <Col xs={12} md={8} className={!activeConversationId ? "d-none d-md-block" : ""}>
+        <Card className="dashboard-card h-100">
+          <Card.Body className="d-flex flex-column" style={{ minHeight: '70vh' }}>
+            <div className="d-flex align-items-center mb-3">
+              <Button 
+                variant="link" 
+                className="d-md-none p-0 me-2 text-decoration-none"
+                onClick={() => dispatch(setActiveConversation(null))}
+              >
+                ← Back
+              </Button>
+              <h5 className="mb-0 fw-bold">
+                {otherParticipant ? `@${otherParticipant.username}` : "Messages"}
+              </h5>
+            </div>
+            
+            <div className="messages-box flex-grow-1 mb-3">
+              {!activeConversationId ? (
+                <div className="h-100 d-flex align-items-center justify-content-center text-muted">
+                  Select a conversation to start chatting
+                </div>
+              ) : (
+                messages.map((message) => (
                   <div
-                    className={`chat-bubble ${
+                    key={message._id}
+                    className={`chat-bubble-row ${
                       String(message.sender?._id) === String(user.id || user._id)
-                        ? "chat-bubble--mine"
-                        : "chat-bubble--other"
+                        ? "chat-bubble-row--mine"
+                        : ""
                     }`}
                   >
-                    <div className="chat-author">@{message.sender?.username}</div>
-                    {message.content}
+                    <div
+                      className={`chat-bubble ${
+                        String(message.sender?._id) === String(user.id || user._id)
+                          ? "chat-bubble--mine"
+                          : "chat-bubble--other"
+                      }`}
+                    >
+                      <div className="chat-author small fw-bold mb-1">
+                        @{message.sender?.username}
+                      </div>
+                      <div className="chat-content">{message.content}</div>
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))
+              )}
             </div>
+            
             {activeConversationId && (
               <Form
                 onSubmit={(e) => {
@@ -94,10 +162,20 @@ const MessagesPage = () => {
                   dispatch(sendMessage({ receiverId: otherParticipant._id, content: draft.trim() }));
                   setDraft("");
                 }}
-                className="d-flex gap-2"
+                className="mt-auto"
               >
-                <Form.Control value={draft} onChange={(e) => setDraft(e.target.value)} />
-                <Button type="submit">Send</Button>
+                <div className="d-flex gap-2">
+                  <Form.Control 
+                    value={draft} 
+                    onChange={(e) => setDraft(e.target.value)}
+                    placeholder="Type a message..."
+                    className="py-2 px-3 rounded-pill"
+                  />
+                  <Button type="submit" variant="primary" className="rounded-circle px-3">
+                    <span className="d-none d-sm-inline">Send</span>
+                    <span className="d-sm-none">➤</span>
+                  </Button>
+                </div>
               </Form>
             )}
           </Card.Body>

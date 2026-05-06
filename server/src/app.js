@@ -14,7 +14,11 @@ const { notFound, errorHandler } = require("./middlewares/errorMiddleware"); // 
 const app = express();
 
 // استخدام البرمجيات الوسيطة الأساسية
-app.use(helmet()); // تأمين الرؤوس (Headers)
+app.use(
+  helmet({
+    crossOriginResourcePolicy: { policy: "cross-origin" }, // السماح بتحميل الصور من السيرفر
+  })
+);
 app.use(
   cors({
     origin: process.env.CLIENT_URL || "http://localhost:5173", // السماح للواجهة الأمامية بالوصول
