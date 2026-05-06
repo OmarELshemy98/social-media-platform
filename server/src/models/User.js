@@ -31,6 +31,11 @@ const userSchema = new mongoose.Schema(
       trim: true,
       lowercase: true,
     },
+    phoneNumber: {
+      type: String,
+      trim: true,
+      default: "",
+    },
     password: {
       type: String,
       required: true,
@@ -93,6 +98,14 @@ const userSchema = new mongoose.Schema(
         ref: "User",
       },
     ],
+    // حقول استعادة كلمة المرور
+    resetPasswordToken: String,
+    resetPasswordExpire: Date,
+    // حالة الحساب
+    isActive: {
+      type: Boolean,
+      default: true,
+    },
   },
   { timestamps: true } // إضافة createdAt و updatedAt تلقائياً
 );

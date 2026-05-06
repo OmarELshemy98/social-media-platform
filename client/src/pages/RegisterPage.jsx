@@ -12,6 +12,7 @@ const RegisterPage = () => {
     name: "",
     username: "",
     email: "",
+    phoneNumber: "",
     password: "",
   });
 
@@ -40,7 +41,15 @@ const RegisterPage = () => {
 
               {error && (
                 <Alert variant="danger" className="py-2 small">
-                  {error}
+                  {Array.isArray(error) ? (
+                    <ul className="mb-0 ps-3">
+                      {error.map((err, index) => (
+                        <li key={index}>{err.msg}</li>
+                      ))}
+                    </ul>
+                  ) : (
+                    error
+                  )}
                 </Alert>
               )}
 
@@ -78,6 +87,17 @@ const RegisterPage = () => {
                     placeholder="name@example.com"
                     value={formData.email}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  />
+                </Form.Group>
+
+                <Form.Group className="mb-2">
+                  <Form.Label className="small fw-semibold">Phone Number</Form.Label>
+                  <Form.Control
+                    type="tel"
+                    required
+                    placeholder="+201234567890"
+                    value={formData.phoneNumber}
+                    onChange={(e) => setFormData({ ...formData, phoneNumber: e.target.value })}
                   />
                 </Form.Group>
 

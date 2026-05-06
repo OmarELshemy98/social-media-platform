@@ -4,6 +4,7 @@ import api from "../../services/api";
 const initialState = {
   profileUser: null,
   profilePosts: [],
+  suggestions: [],
   relationship: "none", // 'none' | 'friends' | 'request_sent' | 'request_received' | 'blocked'
   status: "idle",
   error: null,
@@ -69,6 +70,18 @@ export const blockUser = createAsyncThunk(
   }
 );
 
+export const fetchSuggestions = createAsyncThunk(
+  "profile/fetchSuggestions",
+  async (_, { rejectWithValue }) => {
+    try {
+      const { data } = await api.get("/profiles/suggestions");
+      return data.users;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || "Failed to load suggestions");
+    }
+  }
+);
+
 export const updateMyProfile = createAsyncThunk(
   "profile/updateMyProfile",
   async (payload, { rejectWithValue }) => {
@@ -112,6 +125,9 @@ const profileSlice = createSlice({
       })
       .addCase(blockUser.fulfilled, (state) => {
         state.relationship = "blocked";
+      })
+      .addCase(fetchSuggestions.fulfilled, (state, action) => {
+        state.suggestions = action.payload;
       })
       .addCase(updateMyProfile.fulfilled, (state, action) => {
         state.profileUser = action.payload;

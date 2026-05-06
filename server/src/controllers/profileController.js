@@ -149,6 +149,40 @@ const blockUser = async (req, res, next) => {
 };
 
 /**
+ * إلغاء الحظر عن مستخدم
+ */
+const unblockUser = async (req, res, next) => {
+  try {
+    const targetUserId = req.params.userId;
+    const currentUser = await User.findById(req.user._id);
+
+    currentUser.blockedUsers = currentUser.blockedUsers.filter(
+      (id) => String(id) !== String(targetUserId)
+    );
+
+    await currentUser.save();
+    res.status(200).json({ message: "User unblocked successfully" });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * جلب قائمة المستخدمين المحظورين
+ */
+const getBlockedUsers = async (req, res, next) => {
+  try {
+    const user = await User.findById(req.user._id).populate(
+      "blockedUsers",
+      "name username avatarUrl"
+    );
+    res.status(200).json({ blockedUsers: user.blockedUsers });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
  * تحديث بيانات الملف الشخصي للمستخدم الحالي
  */
 const updateMyProfile = async (req, res, next) => {
@@ -180,6 +214,83 @@ const updateMyProfile = async (req, res, next) => {
   }
 };
 
+/**
+ * تغيير كلمة المرور من داخل الإعدادات
+ */
+const updatePassword = async (req, res, next) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    const user = await User.findById(req.user._id).select("+password");
+
+    const isMatch = await bcrypt.compare(currentPassword, user.password);
+    if (!isMatch) {
+      return res.status(401).json({ message: "Current password is incorrect" });
+    }
+
+    user.password = await bcrypt.hash(newPassword, 12);
+    await user.save();
+
+    res.status(200).json({ message: "Password updated successfully" });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * تعطيل الحساب (Disable)
+ */
+const disableAccount = async (req, res, next) => {
+  try {
+    const user = await User.findById(req.user._id);
+    user.isActive = false;
+    await user.save();
+    res.status(200).json({ message: "Account disabled successfully" });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * حذف الحساب نهائياً
+ */
+const deleteAccount = async (req, res, next) => {
+  try {
+    // يمكن هنا حذف المنشورات والتعليقات المرتبطة بالمستخدم أيضاً
+    await User.findByIdAndDelete(req.user._id);
+    res.status(200).json({ message: "Account deleted permanently" });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * جلب مقترحات لمستخدمين قد تعرفهم
+ */
+const getSuggestions = async (req, res, next) => {
+  try {
+    const currentUser = req.user;
+    
+    // جلب مستخدمين ليسوا أصدقاء وليسوا المستخدم الحالي وليسوا محظورين
+    const suggestions = await User.find({
+      _id: { 
+        $nin: [
+          currentUser._id, 
+          ...currentUser.friends, 
+          ...currentUser.blockedUsers,
+          ...currentUser.friendRequestsSent,
+          ...currentUser.friendRequestsReceived
+        ] 
+      }
+    })
+    .select("name username avatarUrl")
+    .limit(5);
+
+    res.status(200).json({ users: suggestions });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getProfile,
   updateMyProfile,
@@ -187,4 +298,10 @@ module.exports = {
   acceptFriendRequest,
   unfriendUser,
   blockUser,
+  unblockUser,
+  getBlockedUsers,
+  getSuggestions,
+  updatePassword,
+  disableAccount,
+  deleteAccount,
 };

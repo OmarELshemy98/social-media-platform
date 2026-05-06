@@ -6,24 +6,25 @@
 const bcrypt = require("bcryptjs"); // لتشفير ومقارنة كلمات المرور
 const User = require("../models/User"); // استيراد نموذج المستخدم
 const generateToken = require("../utils/generateToken"); // وظيفة توليد JWT
-const { sendWelcomeEmail } = require("../config/mailer"); // وظيفة إرسال بريد ترحيبي
+const { sendWelcomeEmail, sendResetPasswordEmail } = require("../config/mailer"); // وظيفة إرسال بريد ترحيبي
+const crypto = require("crypto"); // لتوليد رموز عشوائية
 
 /**
  * تسجيل مستخدم جديد
  */
 const registerUser = async (req, res, next) => {
   try {
-    const { name, username, email, password } = req.body;
+    const { name, username, email, phoneNumber, password } = req.body;
 
     // التحقق مما إذا كان البريد الإلكتروني أو اسم المستخدم موجوداً مسبقاً
-    const existingUser = await User.findOne({
-      $or: [{ email }, { username: username.toLowerCase() }],
-    });
+    const existingUserByEmail = await User.findOne({ email: email.toLowerCase() });
+    if (existingUserByEmail) {
+      return res.status(409).json({ message: "This email is already registered. Please use another email or login." });
+    }
 
-    if (existingUser) {
-      return res
-        .status(409)
-        .json({ message: "User already exists with email or username" });
+    const existingUserByUsername = await User.findOne({ username: username.toLowerCase() });
+    if (existingUserByUsername) {
+      return res.status(409).json({ message: "This username is already taken. Please choose a different one." });
     }
 
     // تشفير كلمة المرور قبل الحفظ في قاعدة البيانات
@@ -34,6 +35,7 @@ const registerUser = async (req, res, next) => {
       name,
       username: username.toLowerCase(),
       email,
+      phoneNumber,
       password: hashedPassword,
     });
 
@@ -108,4 +110,85 @@ const getCurrentUser = async (req, res) => {
   res.status(200).json({ user: req.user });
 };
 
-module.exports = { registerUser, loginUser, getCurrentUser };
+/**
+ * طلب استعادة كلمة المرور
+ */
+const forgotPassword = async (req, res, next) => {
+  try {
+    const { email, username } = req.body;
+
+    // البحث عن المستخدم بالبريد واسم المستخدم معاً للتأكد
+    const user = await User.findOne({ 
+      email: email.toLowerCase(), 
+      username: username.toLowerCase() 
+    });
+
+    if (!user) {
+      return res.status(404).json({ message: "No user found with this email and username" });
+    }
+
+    // توليد رمز استعادة عشوائي
+    const resetToken = crypto.randomBytes(20).toString("hex");
+
+    // تشفير الرمز وحفظه في قاعدة البيانات مع وقت انتهاء (ساعة واحدة)
+    user.resetPasswordToken = crypto
+      .createHash("sha256")
+      .update(resetToken)
+      .digest("hex");
+    
+    user.resetPasswordExpire = Date.now() + 3600000; // 1 hour
+
+    await user.save();
+
+    // إنشاء رابط الاستعادة
+    const resetUrl = `${process.env.CLIENT_URL || "http://localhost:5173"}/reset-password/${resetToken}`;
+
+    // إرسال البريد الإلكتروني
+    try {
+      await sendResetPasswordEmail({ email: user.email, resetUrl });
+      res.status(200).json({ message: "Password reset link sent to your email" });
+    } catch (err) {
+      user.resetPasswordToken = undefined;
+      user.resetPasswordExpire = undefined;
+      await user.save();
+      return res.status(500).json({ message: "Email could not be sent" });
+    }
+  } catch (error) {
+    return next(error);
+  }
+};
+
+/**
+ * تعيين كلمة مرور جديدة
+ */
+const resetPassword = async (req, res, next) => {
+  try {
+    // تشفير الرمز القادم من الرابط للبحث عنه
+    const resetPasswordToken = crypto
+      .createHash("sha256")
+      .update(req.params.resetToken)
+      .digest("hex");
+
+    const user = await User.findOne({
+      resetPasswordToken,
+      resetPasswordExpire: { $gt: Date.now() }, // التأكد أن الرمز لم ينتهِ
+    });
+
+    if (!user) {
+      return res.status(400).json({ message: "Invalid or expired reset token" });
+    }
+
+    // تشفير كلمة المرور الجديدة
+    user.password = await bcrypt.hash(req.body.password, 12);
+    user.resetPasswordToken = undefined;
+    user.resetPasswordExpire = undefined;
+
+    await user.save();
+
+    res.status(200).json({ message: "Password updated successfully" });
+  } catch (error) {
+    return next(error);
+  }
+};
+
+module.exports = { registerUser, loginUser, getCurrentUser, forgotPassword, resetPassword };

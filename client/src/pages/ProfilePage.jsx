@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Button, Card, Form, Row, Col, Nav, Tab } from "react-bootstrap";
+import { Button, Card, Form, Row, Col, Nav, Tab, Modal } from "react-bootstrap";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate, useParams } from "react-router-dom";
 import { 
@@ -12,7 +12,8 @@ import {
 } from "../features/profile/profileSlice";
 import { 
   startConversationWithUser,
-  fetchConversationMessages
+  fetchConversationMessages,
+  sendMessage
 } from "../features/messages/messagesSlice";
 import { 
   addCommentToPost, 
@@ -25,14 +26,21 @@ import PostCard from "../components/posts/PostCard";
 
 const ProfilePage = () => {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const { username } = useParams();
   const { user: currentUser } = useSelector((state) => state.auth);
   const { profileUser, profilePosts, relationship } = useSelector((state) => state.profile);
+  const { messages, activeConversationId } = useSelector((state) => state.messages);
+  
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState({ name: "", bio: "", avatarUrl: "", coverUrl: "" });
   const [avatarFile, setAvatarFile] = useState(null);
   const [coverFile, setCoverFile] = useState(null);
   const [isUploading, setIsUploading] = useState(false);
+
+  // States for Quick Chat Popup
+  const [showChatModal, setShowNewChatModal] = useState(false);
+  const [chatDraft, setChatDraft] = useState("");
 
   const targetUsername = username || currentUser?.username;
   const isOwner = targetUsername === currentUser?.username;
@@ -41,6 +49,17 @@ const ProfilePage = () => {
     if (targetUsername) dispatch(fetchProfileByUsername(targetUsername));
   }, [dispatch, targetUsername]);
 
+  // Interval for refreshing messages when popup is open
+  useEffect(() => {
+    let interval;
+    if (showChatModal && activeConversationId) {
+      interval = setInterval(() => {
+        dispatch(fetchConversationMessages(activeConversationId));
+      }, 5000);
+    }
+    return () => clearInterval(interval);
+  }, [dispatch, showChatModal, activeConversationId]);
+
   const handleLike = async (postId) => {
     dispatch(optimisticToggleLike({ postId, userId: currentUser.id || currentUser._id }));
     await dispatch(toggleLikePost(postId));
@@ -48,13 +67,69 @@ const ProfilePage = () => {
 
   const handleMessageClick = async () => {
     if (profileUser?.username) {
-      await dispatch(startConversationWithUser(profileUser.username));
-      navigate("/messages");
+      const result = await dispatch(startConversationWithUser(profileUser.username)).unwrap();
+      await dispatch(fetchConversationMessages(result._id));
+      setShowNewChatModal(true);
     }
+  };
+
+  const handleSendQuickMessage = async (e) => {
+    e.preventDefault();
+    if (!chatDraft.trim() || !profileUser?._id) return;
+    await dispatch(sendMessage({ receiverId: profileUser._id, content: chatDraft.trim() }));
+    setChatDraft("");
   };
 
   return (
     <div className="profile-page pb-5">
+      {/* Quick Chat Modal */}
+      <Modal 
+        show={showChatModal} 
+        onHide={() => setShowNewChatModal(false)}
+        centered
+        size="md"
+        className="quick-chat-modal"
+      >
+        <Modal.Header closeButton className="border-0 pb-0">
+          <Modal.Title className="fs-5 fw-bold">
+            Chat with @{profileUser?.username}
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body className="pt-2">
+          <div 
+            className="quick-messages-box mb-3 overflow-auto" 
+            style={{ height: '350px', padding: '10px', background: '#f8f9fa', borderRadius: '12px' }}
+          >
+            {messages.length === 0 ? (
+              <div className="h-100 d-flex align-items-center justify-content-center text-muted small">
+                No messages yet. Say hi!
+              </div>
+            ) : (
+              messages.map((m) => (
+                <div 
+                  key={m._id} 
+                  className={`chat-bubble-row ${String(m.sender?._id) === String(currentUser.id || currentUser._id) ? 'chat-bubble-row--mine' : ''}`}
+                >
+                  <div className={`chat-bubble ${String(m.sender?._id) === String(currentUser.id || currentUser._id) ? 'chat-bubble--mine' : 'chat-bubble--other'}`}>
+                    {m.content}
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+          <Form onSubmit={handleSendQuickMessage}>
+            <div className="d-flex gap-2">
+              <Form.Control 
+                placeholder="Type a message..."
+                className="rounded-pill px-3"
+                value={chatDraft}
+                onChange={(e) => setChatDraft(e.target.value)}
+              />
+              <Button type="submit" variant="primary" className="rounded-pill px-4">Send</Button>
+            </div>
+          </Form>
+        </Modal.Body>
+      </Modal>
       {/* Profile Header Card */}
       <Card className="dashboard-card border-0 shadow-sm overflow-hidden mb-4">
         <div 

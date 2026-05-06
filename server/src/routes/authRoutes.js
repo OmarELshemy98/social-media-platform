@@ -8,6 +8,8 @@ const {
   registerUser,
   loginUser,
   getCurrentUser,
+  forgotPassword,
+  resetPassword,
 } = require("../controllers/authController");
 const { protect } = require("../middlewares/authMiddleware");
 const validateRequest = require("../middlewares/validateRequest");
@@ -26,5 +28,9 @@ router.post("/login", loginValidator, validateRequest, loginUser);
 
 // مسار الحصول على بيانات المستخدم الحالي: يتطلب تسجيل الدخول (محمي بـ protect)
 router.get("/me", protect, getCurrentUser);
+
+// مسارات استعادة كلمة المرور
+router.post("/forgot-password", forgotPassword);
+router.put("/reset-password/:resetToken", resetPassword);
 
 module.exports = router;

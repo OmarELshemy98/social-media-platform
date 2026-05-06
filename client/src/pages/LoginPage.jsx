@@ -55,6 +55,9 @@ const LoginPage = () => {
                 <Form.Group className="mb-4">
                   <div className="d-flex justify-content-between">
                     <Form.Label className="small fw-semibold">Password</Form.Label>
+                    <Link to="/forgot-password" style={{ fontSize: '0.75rem' }} className="text-decoration-none fw-semibold">
+                      Forgot password?
+                    </Link>
                   </div>
                   <Form.Control
                     type="password"

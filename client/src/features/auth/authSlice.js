@@ -28,8 +28,9 @@ export const registerUser = createAsyncThunk(
       const { data } = await api.post("/auth/register", payload);
       return data;
     } catch (error) {
+      // إرجاع مصفوفة الأخطاء إذا كانت موجودة، أو الرسالة العامة
       return rejectWithValue(
-        error.response?.data?.message || "Registration failed"
+        error.response?.data?.errors || error.response?.data?.message || "Registration failed"
       );
     }
   }
@@ -61,6 +62,30 @@ export const fetchCurrentUser = createAsyncThunk(
       return data.user;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || "Session expired");
+    }
+  }
+);
+
+export const forgotPassword = createAsyncThunk(
+  "auth/forgotPassword",
+  async (payload, { rejectWithValue }) => {
+    try {
+      const { data } = await api.post("/auth/forgot-password", payload);
+      return data.message;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || "Failed to send reset email");
+    }
+  }
+);
+
+export const resetPassword = createAsyncThunk(
+  "auth/resetPassword",
+  async ({ resetToken, password }, { rejectWithValue }) => {
+    try {
+      const { data } = await api.put(`/auth/reset-password/${resetToken}`, { password });
+      return data.message;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || "Failed to reset password");
     }
   }
 );
