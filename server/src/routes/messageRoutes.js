@@ -5,6 +5,7 @@ const {
   getMyConversations,
   getMessagesByConversation,
   sendMessage,
+  startConversationByUsername,
 } = require("../controllers/messageController");
 const { sendMessageValidator } = require("../validators/messageValidators");
 
@@ -13,6 +14,7 @@ router.use(protect);
 
 router.get("/conversations", getMyConversations);
 router.get("/conversations/:conversationId/messages", getMessagesByConversation);
+router.post("/conversations/start", startConversationByUsername);
 router.post("/", sendMessageValidator, validateRequest, sendMessage);
 
 module.exports = router;

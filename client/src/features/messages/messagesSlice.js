@@ -29,6 +29,14 @@ export const sendMessage = createAsyncThunk(
   }
 );
 
+export const startConversationWithUser = createAsyncThunk(
+  "messages/startConversation",
+  async (username) => {
+    const { data } = await api.post("/messages/conversations/start", { username });
+    return data.conversation;
+  }
+);
+
 const messagesSlice = createSlice({
   name: "messages",
   initialState,
@@ -48,6 +56,13 @@ const messagesSlice = createSlice({
       })
       .addCase(sendMessage.fulfilled, (state, action) => {
         state.messages.push(action.payload.message);
+      })
+      .addCase(startConversationWithUser.fulfilled, (state, action) => {
+        const exists = state.conversations.find(c => c._id === action.payload._id);
+        if (!exists) {
+          state.conversations.unshift(action.payload);
+        }
+        state.activeConversationId = action.payload._id;
       });
   },
 });

@@ -1,10 +1,16 @@
+/**
+ * @file Post.js
+ * @description نموذج (Model) المنشورات والتعليقات في قاعدة البيانات.
+ */
+
 const mongoose = require("mongoose");
 
+// تعريف هيكل بيانات التعليق
 const commentSchema = new mongoose.Schema(
   {
     author: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
+      ref: "User", // صاحب التعليق
       required: true,
     },
     content: {
@@ -13,6 +19,7 @@ const commentSchema = new mongoose.Schema(
       trim: true,
       maxlength: 500,
     },
+    // الردود على التعليق
     replies: [
       {
         author: {
@@ -40,11 +47,12 @@ const commentSchema = new mongoose.Schema(
   { _id: true }
 );
 
+// تعريف هيكل بيانات المنشور
 const postSchema = new mongoose.Schema(
   {
     author: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
+      ref: "User", // كاتب المنشور
       required: true,
       index: true,
     },
@@ -55,7 +63,7 @@ const postSchema = new mongoose.Schema(
       maxlength: 2000,
     },
     imageUrl: {
-      type: String,
+      type: String, // رابط الصورة المرفقة إن وجدت
       default: "",
     },
     tags: [
@@ -65,17 +73,20 @@ const postSchema = new mongoose.Schema(
         lowercase: true,
       },
     ],
+    // قائمة الإعجابات (تحتوي على معرفات المستخدمين)
     likes: [
       {
         type: mongoose.Schema.Types.ObjectId,
         ref: "User",
       },
     ],
+    // قائمة التعليقات
     comments: [commentSchema],
   },
   { timestamps: true }
 );
 
+// إضافة فهرس نصي للبحث في محتوى المنشورات والوسوم
 postSchema.index({ content: "text", tags: "text" });
 
 module.exports = mongoose.model("Post", postSchema);

@@ -1,6 +1,12 @@
+/**
+ * @file authSlice.js
+ * @description إدارة حالة المصادقة (التسجيل، تسجيل الدخول، المستخدم الحالي) باستخدام Redux Toolkit.
+ */
+
 import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
 import api from "../../services/api";
 
+// جلب البيانات المخزنة مسبقاً في المتصفح إن وجدت
 const persistedToken = localStorage.getItem("token");
 const persistedUser = localStorage.getItem("user");
 
@@ -8,10 +14,13 @@ const initialState = {
   user: persistedUser ? JSON.parse(persistedUser) : null,
   token: persistedToken || null,
   isAuthenticated: Boolean(persistedToken),
-  status: "idle",
+  status: "idle", // 'idle' | 'loading' | 'succeeded' | 'failed'
   error: null,
 };
 
+/**
+ * وظيفة غير متزامنة لتسجيل مستخدم جديد
+ */
 export const registerUser = createAsyncThunk(
   "auth/registerUser",
   async (payload, { rejectWithValue }) => {
@@ -19,13 +28,17 @@ export const registerUser = createAsyncThunk(
       const { data } = await api.post("/auth/register", payload);
       return data;
     } catch (error) {
+      // إرجاع مصفوفة الأخطاء إذا كانت موجودة، أو الرسالة العامة
       return rejectWithValue(
-        error.response?.data?.message || "Registration failed"
+        error.response?.data?.errors || error.response?.data?.message || "Registration failed"
       );
     }
   }
 );
 
+/**
+ * وظيفة غير متزامنة لتسجيل الدخول
+ */
 export const loginUser = createAsyncThunk(
   "auth/loginUser",
   async (payload, { rejectWithValue }) => {
@@ -38,6 +51,9 @@ export const loginUser = createAsyncThunk(
   }
 );
 
+/**
+ * وظيفة غير متزامنة لجلب بيانات المستخدم الحالي بناءً على الرمز المخزن
+ */
 export const fetchCurrentUser = createAsyncThunk(
   "auth/fetchCurrentUser",
   async (_, { rejectWithValue }) => {
@@ -50,10 +66,35 @@ export const fetchCurrentUser = createAsyncThunk(
   }
 );
 
+export const forgotPassword = createAsyncThunk(
+  "auth/forgotPassword",
+  async (payload, { rejectWithValue }) => {
+    try {
+      const { data } = await api.post("/auth/forgot-password", payload);
+      return data.message;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || "Failed to send reset email");
+    }
+  }
+);
+
+export const resetPassword = createAsyncThunk(
+  "auth/resetPassword",
+  async ({ resetToken, password }, { rejectWithValue }) => {
+    try {
+      const { data } = await api.put(`/auth/reset-password/${resetToken}`, { password });
+      return data.message;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || "Failed to reset password");
+    }
+  }
+);
+
 const authSlice = createSlice({
   name: "auth",
   initialState,
   reducers: {
+    // تسجيل الخروج ومسح البيانات
     logout: (state) => {
       state.user = null;
       state.token = null;
@@ -63,12 +104,14 @@ const authSlice = createSlice({
       localStorage.removeItem("token");
       localStorage.removeItem("user");
     },
+    // مسح رسائل الخطأ
     clearAuthError: (state) => {
       state.error = null;
     },
   },
   extraReducers: (builder) => {
     builder
+      // معالجة حالات التسجيل
       .addCase(registerUser.pending, (state) => {
         state.status = "loading";
         state.error = null;
@@ -85,6 +128,7 @@ const authSlice = createSlice({
         state.status = "failed";
         state.error = action.payload;
       })
+      // معالجة حالات تسجيل الدخول
       .addCase(loginUser.pending, (state) => {
         state.status = "loading";
         state.error = null;

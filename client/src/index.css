@@ -1,4 +1,10 @@
+/**
+ * @file index.css
+ * @description ملف الأنماط الرئيسي (CSS). يحتوي على المتغيرات والأنماط العامة وتنسيقات الوضع الداكن والفاتح.
+ */
+
 :root {
+  /* متغيرات الألوان للوضع الفاتح */
   --bg: #f6f8fb;
   --surface: #ffffff;
   --text: #1c2434;
@@ -8,6 +14,7 @@
 }
 
 [data-theme="dark"] {
+  /* متغيرات الألوان للوضع الداكن */
   --bg: #111827;
   --surface: #1f2937;
   --text: #e5e7eb;
@@ -31,6 +38,7 @@ a {
   text-decoration: none;
 }
 
+/* تنسيقات الهيكل العام والبطاقات */
 .app-shell {
   min-height: 100vh;
   background: var(--bg);
@@ -53,16 +61,35 @@ a {
   margin-bottom: 1rem;
 }
 
+/* صفحة المصادقة */
 .auth-page {
   min-height: 100vh;
   display: flex;
   align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.auth-card {
+  max-width: 100%;
+  width: 100%;
+  transition: transform 0.3s ease;
+}
+
+@media (max-width: 576px) {
+  .auth-page {
+    padding: 0.5rem;
+  }
+  .auth-card .card-body {
+    padding: 1.5rem !important;
+  }
 }
 
 .text-muted {
   color: var(--muted) !important;
 }
 
+/* صندوق الرسائل */
 .messages-box {
   min-height: 280px;
   max-height: 420px;
@@ -72,6 +99,7 @@ a {
   padding: 0.75rem;
 }
 
+/* صور المنشورات */
 .post-image {
   width: min(100%, 480px);
   max-height: 360px;
@@ -80,6 +108,7 @@ a {
   border: 1px solid var(--border);
 }
 
+/* فقاعات الدردشة */
 .chat-bubble-row {
   display: flex;
   justify-content: flex-start;

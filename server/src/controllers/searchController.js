@@ -10,6 +10,7 @@ const globalSearch = async (req, res, next) => {
       $or: [
         { username: { $regex: q, $options: "i" } },
         { name: { $regex: q, $options: "i" } },
+        { email: { $regex: q, $options: "i" } },
       ],
     })
       .select("name username avatarUrl bio")

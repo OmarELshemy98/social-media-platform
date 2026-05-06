@@ -1,3 +1,8 @@
+/**
+ * @file index.js
+ * @description تجميع جميع مسارات التطبيق في موجه (Router) واحد.
+ */
+
 const express = require("express");
 const authRoutes = require("./authRoutes");
 const postRoutes = require("./postRoutes");
@@ -9,16 +14,20 @@ const uploadRoutes = require("./uploadRoutes");
 
 const router = express.Router();
 
+/**
+ * اختبار حالة الخادم
+ */
 router.get("/health", (req, res) => {
   res.status(200).json({ status: "ok", service: "social-media-server" });
 });
 
-router.use("/auth", authRoutes);
-router.use("/posts", postRoutes);
-router.use("/profiles", profileRoutes);
-router.use("/notifications", notificationRoutes);
-router.use("/search", searchRoutes);
-router.use("/messages", messageRoutes);
-router.use("/upload", uploadRoutes);
+// تعريف المسارات الفرعية
+router.use("/auth", authRoutes); // مسارات المصادقة
+router.use("/posts", postRoutes); // مسارات المنشورات
+router.use("/profiles", profileRoutes); // مسارات الملفات الشخصية
+router.use("/notifications", notificationRoutes); // مسارات التنبيهات
+router.use("/search", searchRoutes); // مسارات البحث
+router.use("/messages", messageRoutes); // مسارات الرسائل
+router.use("/upload", uploadRoutes); // مسارات رفع الملفات
 
 module.exports = router;

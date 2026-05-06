@@ -1,5 +1,11 @@
+/**
+ * @file User.js
+ * @description نموذج (Model) المستخدم في قاعدة البيانات.
+ */
+
 const mongoose = require("mongoose");
 
+// تعريف هيكل بيانات المستخدم
 const userSchema = new mongoose.Schema(
   {
     name: {
@@ -12,7 +18,7 @@ const userSchema = new mongoose.Schema(
     username: {
       type: String,
       required: true,
-      unique: true,
+      unique: true, // يجب أن يكون فريداً
       trim: true,
       lowercase: true,
       minlength: 3,
@@ -21,15 +27,20 @@ const userSchema = new mongoose.Schema(
     email: {
       type: String,
       required: true,
-      unique: true,
+      unique: true, // يجب أن يكون فريداً
       trim: true,
       lowercase: true,
+    },
+    phoneNumber: {
+      type: String,
+      trim: true,
+      default: "",
     },
     password: {
       type: String,
       required: true,
       minlength: 6,
-      select: false,
+      select: false, // لا يتم إرجاعه تلقائياً عند البحث عن المستخدم
     },
     bio: {
       type: String,
@@ -41,20 +52,62 @@ const userSchema = new mongoose.Schema(
       type: String,
       default: "",
     },
+    coverUrl: {
+      type: String,
+      default: "",
+    },
+    // قائمة المتابعين
     followers: [
       {
         type: mongoose.Schema.Types.ObjectId,
         ref: "User",
       },
     ],
+    // قائمة الأشخاص الذين يتابعهم المستخدم
     following: [
       {
         type: mongoose.Schema.Types.ObjectId,
         ref: "User",
       },
     ],
+    // طلبات الصداقة المرسلة
+    friendRequestsSent: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+      },
+    ],
+    // طلبات الصداقة المستلمة
+    friendRequestsReceived: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+      },
+    ],
+    // قائمة الأصدقاء
+    friends: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+      },
+    ],
+    // قائمة الحظر
+    blockedUsers: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+      },
+    ],
+    // حقول استعادة كلمة المرور
+    resetPasswordToken: String,
+    resetPasswordExpire: Date,
+    // حالة الحساب
+    isActive: {
+      type: Boolean,
+      default: true,
+    },
   },
-  { timestamps: true }
+  { timestamps: true } // إضافة createdAt و updatedAt تلقائياً
 );
 
 module.exports = mongoose.model("User", userSchema);

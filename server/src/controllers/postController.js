@@ -1,18 +1,28 @@
+/**
+ * @file postController.js
+ * @description التحكم في العمليات المتعلقة بالمنشورات (إنشاء، جلب، تعديل، حذف، إعجاب، تعليق).
+ */
+
 const Post = require("../models/Post");
 const Notification = require("../models/Notification");
 
+/**
+ * إنشاء منشور جديد
+ */
 const createPost = async (req, res, next) => {
   try {
     const { content, tags = [], imageUrl = "" } = req.body;
+    // تنظيف الوسوم (Tags) وتحويلها لنص صغير
     const normalizedTags = tags.map((tag) => String(tag).trim().toLowerCase());
 
     const post = await Post.create({
-      author: req.user._id,
+      author: req.user._id, // صاحب المنشور هو المستخدم الحالي
       content,
       imageUrl,
       tags: normalizedTags,
     });
 
+    // جلب بيانات الكاتب لعرضها مع المنشور
     const populated = await post.populate("author", "name username avatarUrl");
     return res.status(201).json({ post: populated });
   } catch (error) {
@@ -20,6 +30,9 @@ const createPost = async (req, res, next) => {
   }
 };
 
+/**
+ * جلب المنشورات لصفحة الـ Feed مع دعم البحث والتصفية والصفحات
+ */
 const getFeedPosts = async (req, res, next) => {
   try {
     const page = Number(req.query.page || 1);
@@ -29,14 +42,16 @@ const getFeedPosts = async (req, res, next) => {
     const tag = req.query.tag?.trim().toLowerCase();
 
     const query = {};
+    // دعم البحث النصي
     if (search) query.$text = { $search: search };
+    // التصفية حسب الوسم
     if (tag) query.tags = tag;
 
     const [posts, total] = await Promise.all([
       Post.find(query)
         .populate("author", "name username avatarUrl")
         .populate("comments.author", "name username avatarUrl")
-        .sort({ createdAt: -1 })
+        .sort({ createdAt: -1 }) // الأحدث أولاً
         .skip(skip)
         .limit(limit),
       Post.countDocuments(query),
@@ -51,6 +66,9 @@ const getFeedPosts = async (req, res, next) => {
   }
 };
 
+/**
+ * جلب منشور واحد بتفاصيله
+ */
 const getSinglePost = async (req, res, next) => {
   try {
     const post = await Post.findById(req.params.postId)
@@ -63,10 +81,14 @@ const getSinglePost = async (req, res, next) => {
   }
 };
 
+/**
+ * تحديث منشور موجود
+ */
 const updatePost = async (req, res, next) => {
   try {
     const post = await Post.findById(req.params.postId);
     if (!post) return res.status(404).json({ message: "Post not found" });
+    // التحقق من أن المستخدم الحالي هو صاحب المنشور
     if (String(post.author) !== String(req.user._id)) {
       return res.status(403).json({ message: "Only post owner can edit this post" });
     }
@@ -84,10 +106,14 @@ const updatePost = async (req, res, next) => {
   }
 };
 
+/**
+ * حذف منشور
+ */
 const deletePost = async (req, res, next) => {
   try {
     const post = await Post.findById(req.params.postId);
     if (!post) return res.status(404).json({ message: "Post not found" });
+    // التحقق من الملكية
     if (String(post.author) !== String(req.user._id)) {
       return res.status(403).json({ message: "Only post owner can delete this post" });
     }

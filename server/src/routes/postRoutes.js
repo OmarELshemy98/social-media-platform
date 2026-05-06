@@ -1,3 +1,8 @@
+/**
+ * @file postRoutes.js
+ * @description تعريف مسارات المنشورات والتفاعلات عليها.
+ */
+
 const express = require("express");
 const { protect } = require("../middlewares/authMiddleware");
 const validateRequest = require("../middlewares/validateRequest");
@@ -18,20 +23,22 @@ const {
 } = require("../validators/postValidators");
 
 const router = express.Router();
+
+// جميع مسارات المنشورات تتطلب تسجيل دخول
 router.use(protect);
 
-router.get("/", getFeedPosts);
-router.post("/", postCreateValidator, validateRequest, createPost);
-router.get("/:postId", getSinglePost);
-router.put("/:postId", postUpdateValidator, validateRequest, updatePost);
-router.delete("/:postId", deletePost);
-router.patch("/:postId/like", toggleLikePost);
-router.post("/:postId/comments", commentValidator, validateRequest, addComment);
+router.get("/", getFeedPosts); // جلب المنشورات
+router.post("/", postCreateValidator, validateRequest, createPost); // إنشاء منشور
+router.get("/:postId", getSinglePost); // جلب منشور محدد
+router.put("/:postId", postUpdateValidator, validateRequest, updatePost); // تحديث منشور
+router.delete("/:postId", deletePost); // حذف منشور
+router.patch("/:postId/like", toggleLikePost); // إعجاب أو إلغاء إعجاب
+router.post("/:postId/comments", commentValidator, validateRequest, addComment); // إضافة تعليق
 router.post(
   "/:postId/comments/:commentId/replies",
   commentValidator,
   validateRequest,
   addReplyToComment
-);
+); // الرد على تعليق
 
 module.exports = router;
