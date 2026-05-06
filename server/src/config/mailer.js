@@ -1,6 +1,15 @@
+/**
+ * @file mailer.js
+ * @description إعدادات إرسال البريد الإلكتروني باستخدام Nodemailer.
+ */
+
 const nodemailer = require("nodemailer");
 
+/**
+ * وظيفة للحصول على كائن النقل (Transport) لإرسال الرسائل
+ */
 const getTransport = () => {
+  // التحقق من وجود إعدادات SMTP في ملف .env
   if (process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS) {
     return nodemailer.createTransport({
       host: process.env.SMTP_HOST,
@@ -13,11 +22,15 @@ const getTransport = () => {
     });
   }
 
+  // في حال عدم وجود إعدادات، يتم استخدام وسيلة تجريبية (JSON)
   return nodemailer.createTransport({
     jsonTransport: true,
   });
 };
 
+/**
+ * إرسال رسالة ترحيب للمستخدم الجديد
+ */
 const sendWelcomeEmail = async ({ name, email }) => {
   const transporter = getTransport();
   await transporter.sendMail({
