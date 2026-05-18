@@ -21,15 +21,29 @@ const app = express();
 // إعداد الـ Middlewares الأساسية:
 app.use(
   helmet({
-    // بنعدل الإعداد ده عشان نسمح بتحميل الصور اللي متسيفة عندنا على السيرفر ونعرضها في الموقع.
     crossOriginResourcePolicy: { policy: "cross-origin" }, 
   })
 );
+
+// إعداد الـ CORS بطريقة مرنة وقوية للإنتاج
+const allowedOrigins = [
+  process.env.CLIENT_URL,
+  "https://satisfied-courage-production-852c.up.railway.app",
+  "http://localhost:5173"
+].filter(Boolean).map(url => url.replace(/\/$/, "")); // إزالة أي / في الآخر
+
 app.use(
   cors({
-    // بنحدد إننا بنقبل طلبات من رابط الفرونت إند بس.
-    origin: process.env.CLIENT_URL || "http://localhost:5173", 
-    credentials: true, // عشان نسمح ببعت الـ Cookies أو الـ Headers الخاصة بالمصادقة.
+    origin: function (origin, callback) {
+      // السماح لو الـ origin موجود في القائمة أو لو الطلب من نفس الدومين
+      if (!origin || allowedOrigins.includes(origin) || origin.includes("railway.app")) {
+        callback(null, true);
+      } else {
+        console.log("Blocked by CORS:", origin);
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
+    credentials: true,
   })
 );
 
