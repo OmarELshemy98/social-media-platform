@@ -1,3 +1,9 @@
+/**
+ * @file messageRoutes.js
+ * @description عناوين (Endpoints) الشات والرسائل.
+ * بنحدد هنا المسارات اللي بنجيب منها المحادثات، وبنبدأ شات جديد، وبنبعت رسايل.
+ */
+
 const express = require("express");
 const { protect } = require("../middlewares/authMiddleware");
 const validateRequest = require("../middlewares/validateRequest");

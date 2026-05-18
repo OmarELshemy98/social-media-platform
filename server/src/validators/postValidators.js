@@ -1,3 +1,9 @@
+/**
+ * @file postValidators.js
+ * @description شروط صحة بيانات "المنشورات".
+ * بنتحقق إن البوست أو الكومنت فيه كلام، وبنحدد أقصى طول للكلام المكتوب عشان ميبقاش طويل زيادة عن اللزوم.
+ */
+
 const { body } = require("express-validator");
 
 const postCreateValidator = [

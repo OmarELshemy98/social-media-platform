@@ -1,43 +1,55 @@
 /**
  * @file profileController.js
- * @description التحكم في العمليات المتعلقة بالملفات الشخصية (جلب وتحديث البيانات).
+ * @description الفايل ده مسؤول عن "الصفحة الشخصية" (Profile).
+ * هنا بنعمل كل حاجة تخص اليوزر وبروفايله وطلبات الصداقة.
  */
 
+// استيراد الموديلات اللي هنحتاجها عشان نكلم الداتا بيز.
 const User = require("../models/User");
 const Post = require("../models/Post");
 const Notification = require("../models/Notification");
 
 /**
- * جلب بيانات الملف الشخصي لمستخدم معين مع منشوراته
+ * وظيفة جلب بيانات الملف الشخصي (Profile)
  */
 const getProfile = async (req, res, next) => {
   try {
+    // بناخد اسم المستخدم من رابط الصفحة (URL Parameter).
     const { username } = req.params;
-    // البحث عن المستخدم باستخدام اسم المستخدم
+    
+    // بندور على اليوزر في الداتا بيز باسمه، وبنستثني الباسورد من النتيجة للأمان.
     const user = await User.findOne({ username }).select("-password");
     if (!user) return res.status(404).json({ message: "User not found" });
 
-    // التحقق من حالة الصداقة بالنسبة للمستخدم الحالي
+    // بنشيك على "حالة العلاقة" بين اليوزر اللي فاتح الموقع وبين صاحب البروفايل ده.
     const currentUser = req.user;
-    let relationship = "none"; // الحالة الافتراضية
+    let relationship = "none"; // الحالة الافتراضية: مفيش علاقة.
 
     if (currentUser) {
+      // لو هما أصدقاء فعلاً.
       if (currentUser.friends.includes(user._id)) {
         relationship = "friends";
-      } else if (currentUser.friendRequestsSent.includes(user._id)) {
+      } 
+      // لو أنا بعتله طلب صداقة ولسه مردش.
+      else if (currentUser.friendRequestsSent.includes(user._id)) {
         relationship = "request_sent";
-      } else if (currentUser.friendRequestsReceived.includes(user._id)) {
+      } 
+      // لو هو اللي بعتلي طلب صداقة وأنا لسه مردتش.
+      else if (currentUser.friendRequestsReceived.includes(user._id)) {
         relationship = "request_received";
-      } else if (currentUser.blockedUsers.includes(user._id)) {
+      } 
+      // لو أنا عامله بلوك.
+      else if (currentUser.blockedUsers.includes(user._id)) {
         relationship = "blocked";
       }
     }
 
-    // جلب المنشورات الخاصة بهذا المستخدم
+    // بنجيب كل البوستات اللي صاحب البروفايل ده نشرها، وبنرتبها من الأحدث للأقدم.
     const posts = await Post.find({ author: user._id })
       .populate("author", "name username avatarUrl")
       .sort({ createdAt: -1 });
 
+    // بنرد بكل البيانات للفرونت إند.
     return res.status(200).json({ user, posts, relationship });
   } catch (error) {
     return next(error);
@@ -45,18 +57,19 @@ const getProfile = async (req, res, next) => {
 };
 
 /**
- * إرسال طلب صداقة
+ * وظيفة إرسال طلب صداقة
  */
 const sendFriendRequest = async (req, res, next) => {
   try {
-    const targetUserId = req.params.userId;
-    const currentUser = await User.findById(req.user._id);
+    const targetUserId = req.params.userId; // اليوزر اللي عايزين نصاحبه.
+    const currentUser = await User.findById(req.user._id); // اليوزر اللي باعت الطلب.
     const targetUser = await User.findById(targetUserId);
 
     if (!targetUser) return res.status(404).json({ message: "User not found" });
+    // مينفعش حد يصاحب نفسه طبعاً!
     if (String(targetUserId) === String(req.user._id)) return res.status(400).json({ message: "Cannot friend yourself" });
 
-    // إضافة للطلبات المرسلة والمستلمة
+    // لو مبعتلوش طلب قبل كده، بنضيفه في "الطلبات المرسلة" عندي و "الطلبات المستلمة" عنده.
     if (!currentUser.friendRequestsSent.includes(targetUserId)) {
       currentUser.friendRequestsSent.push(targetUserId);
       targetUser.friendRequestsReceived.push(req.user._id);
@@ -64,7 +77,7 @@ const sendFriendRequest = async (req, res, next) => {
       await currentUser.save();
       await targetUser.save();
 
-      // إنشاء تنبيه
+      // بنبعتله إشعار (Notification) إن فلان بعتلك طلب صداقة.
       await Notification.create({
         recipient: targetUserId,
         sender: req.user._id,

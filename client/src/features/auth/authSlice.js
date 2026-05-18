@@ -1,34 +1,39 @@
 /**
  * @file authSlice.js
- * @description إدارة حالة المصادقة (التسجيل، تسجيل الدخول، المستخدم الحالي) باستخدام Redux Toolkit.
+ * @description الفايل ده مسؤول عن "حالة الحساب" (Auth State).
+ * بنستخدم Redux Toolkit عشان ندير بيانات اليوزر المسجل في الموقع كله.
  */
 
 import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
+// استيراد الـ API اللي عملناه بـ Axios عشان نكلم السيرفر.
 import api from "../../services/api";
 
-// جلب البيانات المخزنة مسبقاً في المتصفح إن وجدت
+// بنجيب بيانات اليوزر والتوكن من الـ LocalStorage لو اليوزر كان فاتح الموقع قبل كده.
+// الـ LocalStorage هي "ذاكرة المتصفح" اللي مش بتتمسح لما تقفل الصفحة.
 const persistedToken = localStorage.getItem("token");
 const persistedUser = localStorage.getItem("user");
 
+// الحالة الابتدائية (Initial State) لمخزن المصادقة.
 const initialState = {
-  user: persistedUser ? JSON.parse(persistedUser) : null,
-  token: persistedToken || null,
-  isAuthenticated: Boolean(persistedToken),
-  status: "idle", // 'idle' | 'loading' | 'succeeded' | 'failed'
-  error: null,
+  user: persistedUser ? JSON.parse(persistedUser) : null, // اليوزر لو متخزن بنحوله من JSON لكائن (Object).
+  token: persistedToken || null, // التوكن.
+  isAuthenticated: Boolean(persistedToken), // هل اليوزر مسجل دخول؟ (True لو في توكن).
+  status: "idle", // حالة التحميل.
+  error: null, // لو حصل غلط في التسجيل أو الدخول.
 };
 
 /**
- * وظيفة غير متزامنة لتسجيل مستخدم جديد
+ * وظيفة (Thunk) لتسجيل يوزر جديد.
  */
 export const registerUser = createAsyncThunk(
   "auth/registerUser",
   async (payload, { rejectWithValue }) => {
     try {
+      // بنبعت بيانات اليوزر للسيرفر على مسار /auth/register.
       const { data } = await api.post("/auth/register", payload);
-      return data;
+      return data; // بنرجع البيانات اللي جات من السيرفر.
     } catch (error) {
-      // إرجاع مصفوفة الأخطاء إذا كانت موجودة، أو الرسالة العامة
+      // لو حصل غلط (مثلاً الإيميل موجود)، بنرجع رسالة الغلط اللي السيرفر بعتها.
       return rejectWithValue(
         error.response?.data?.errors || error.response?.data?.message || "Registration failed"
       );
@@ -37,12 +42,13 @@ export const registerUser = createAsyncThunk(
 );
 
 /**
- * وظيفة غير متزامنة لتسجيل الدخول
+ * وظيفة (Thunk) لتسجيل الدخول.
  */
 export const loginUser = createAsyncThunk(
   "auth/loginUser",
   async (payload, { rejectWithValue }) => {
     try {
+      // بنبعت الإيميل والباسورد للسيرفر.
       const { data } = await api.post("/auth/login", payload);
       return data;
     } catch (error) {

@@ -1,62 +1,78 @@
 /**
  * @file postController.js
- * @description التحكم في العمليات المتعلقة بالمنشورات (إنشاء، جلب، تعديل، حذف، إعجاب، تعليق).
+ * @description الفايل ده هو "مدير المنشورات" (Posts Manager).
+ * هنا بنتحكم في كل حاجة تخص البوستات: إنشاء، جلب، لايك، وكومنت.
  */
 
+// استيراد موديل البوست عشان نكلم جدول المنشورات في الداتا بيز.
 const Post = require("../models/Post");
+// استيراد موديل التنبيهات عشان نبعت إشعار لليوزر لما حد يتفاعل معاه.
 const Notification = require("../models/Notification");
 
 /**
- * إنشاء منشور جديد
+ * وظيفة إنشاء منشور جديد
  */
 const createPost = async (req, res, next) => {
   try {
+    // بناخد المحتوى، الوسوم (الهاشتاجات)، ورابط الصورة من جسم الطلب (Request Body).
     const { content, tags = [], imageUrl = "" } = req.body;
-    // تنظيف الوسوم (Tags) وتحويلها لنص صغير
+    
+    // بننظف الهاشتاجات: بنشيل المسافات الزيادة وبنحولها لحروف صغيرة (Lowercase).
     const normalizedTags = tags.map((tag) => String(tag).trim().toLowerCase());
 
+    // بنسيف البوست الجديد في الداتا بيز.
+    // لاحظ إننا بنربط البوست باليوزر اللي بعت الطلب عن طريق req.user._id (اللي جابه الـ Auth Middleware).
     const post = await Post.create({
-      author: req.user._id, // صاحب المنشور هو المستخدم الحالي
+      author: req.user._id,
       content,
       imageUrl,
       tags: normalizedTags,
     });
 
-    // جلب بيانات الكاتب لعرضها مع المنشور
+    // بعد ما البوست يتسيف، بنعمل له "populate" يعني بنجيب بيانات كاتب البوست (الاسم، اليوزر نيم، الصورة) عشان نعرضها في الفرونت إند.
     const populated = await post.populate("author", "name username avatarUrl");
+    
+    // بنرد على الفرونت إند بإن البوست اتكريت بنجاح.
     return res.status(201).json({ post: populated });
   } catch (error) {
+    // لو حصل أي غلط، بنبعته للـ errorHandler.
     return next(error);
   }
 };
 
 /**
- * جلب المنشورات لصفحة الـ Feed مع دعم البحث والتصفية والصفحات
+ * وظيفة جلب البوستات (الـ Feed) مع دعم البحث والترقيم (Pagination)
  */
 const getFeedPosts = async (req, res, next) => {
   try {
+    // بنحدد الصفحة المطلوبة (الافتراضي صفحة 1) وعدد البوستات في كل صفحة (الافتراضي 10).
     const page = Number(req.query.page || 1);
-    const limit = Math.min(Number(req.query.limit || 10), 50);
-    const skip = (page - 1) * limit;
-    const search = req.query.search?.trim();
-    const tag = req.query.tag?.trim().toLowerCase();
+    const limit = Math.min(Number(req.query.limit || 10), 50); // مش بنسمح بأكثر من 50 بوست في المرة الواحدة للأداء.
+    const skip = (page - 1) * limit; // بنحسب السيرفر هيفوت كام بوست عشان يوصل للصفحة المطلوبة.
+    
+    const search = req.query.search?.trim(); // لو اليوزر بيبحث عن كلمة معينة.
+    const tag = req.query.tag?.trim().toLowerCase(); // لو اليوزر بيبحث عن هاشتاج معين.
 
     const query = {};
-    // دعم البحث النصي
+    // لو في بحث نصي، بنستخدم الفهرس النصي ($text) بتاع MongoDB.
     if (search) query.$text = { $search: search };
-    // التصفية حسب الوسم
+    // لو في بحث بهاشتاج، بندور عليه في مصفوفة الـ tags.
     if (tag) query.tags = tag;
 
+    // بنعمل طلبين للداتا بيز في نفس الوقت (Parallel) عشان السرعة:
+    // 1. بنجيب البوستات المطلوبة وبنعمل لها populate لبيانات الكاتب والكومنتات.
+    // 2. بنعد إجمالي البوستات اللي مطابقة للبحث عشان الترقيم.
     const [posts, total] = await Promise.all([
       Post.find(query)
         .populate("author", "name username avatarUrl")
         .populate("comments.author", "name username avatarUrl")
-        .sort({ createdAt: -1 }) // الأحدث أولاً
+        .sort({ createdAt: -1 }) // الأحدث بيظهر فوق.
         .skip(skip)
         .limit(limit),
       Post.countDocuments(query),
     ]);
 
+    // بنبعت البوستات وبيانات الترقيم للفرونت إند.
     return res.status(200).json({
       posts,
       pagination: { page, limit, total, pages: Math.ceil(total / limit) },

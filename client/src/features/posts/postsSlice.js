@@ -1,31 +1,49 @@
+/**
+ * @file postsSlice.js
+ * @description الفايل ده هو المسؤول عن "بيانات المنشورات" في الفرونت إند.
+ * بنستخدم Redux Toolkit عشان ندير حالة البوستات (Posts State) في الموقع كله.
+ */
+
 import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
+// استيراد الـ API اللي عملناه بـ Axios عشان نكلم السيرفر.
 import api from "../../services/api";
 
+// الحالة الابتدائية (Initial State) لمخزن البوستات.
 const initialState = {
-  posts: [],
-  pagination: null,
-  status: "idle",
-  error: null,
+  posts: [], // مصفوفة هنخزن فيها كل البوستات اللي هتيجي من السيرفر.
+  pagination: null, // بيانات الترقيم (زي رقم الصفحة الحالية).
+  status: "idle", // حالة التحميل (idle, loading, succeeded, failed).
+  error: null, // لو حصل غلط بنخزنه هنا.
 };
 
+/**
+ * وظيفة (Thunk) لجلب البوستات من السيرفر.
+ * بنستخدم createAsyncThunk عشان دي عملية بتاخد وقت (Async).
+ */
 export const fetchFeedPosts = createAsyncThunk(
   "posts/fetchFeedPosts",
   async (params = {}, { rejectWithValue }) => {
     try {
+      // بنبعت طلب GET للسيرفر على مسار /posts مع أي بارامترات (زي الصفحة أو البحث).
       const { data } = await api.get("/posts", { params });
-      return data;
+      return data; // بنرجع الداتا اللي جات (البوستات والترقيم).
     } catch (error) {
+      // لو السيرفر رد بغلط، بنرجعه باستخدام rejectWithValue.
       return rejectWithValue(error.response?.data?.message || "Failed to load feed");
     }
   }
 );
 
+/**
+ * وظيفة لإنشاء بوست جديد.
+ */
 export const createPost = createAsyncThunk(
   "posts/createPost",
   async (payload, { rejectWithValue }) => {
     try {
+      // بنبعت طلب POST للسيرفر فيه محتوى البوست (كلام وصورة).
       const { data } = await api.post("/posts", payload);
-      return data.post;
+      return data.post; // بنرجع البوست الجديد اللي اتكريت.
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || "Failed to create post");
     }

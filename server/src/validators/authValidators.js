@@ -1,52 +1,44 @@
 /**
  * @file authValidators.js
- * @description قواعد التحقق من صحة بيانات المصادقة (التسجيل ودخول المستخدم).
+ * @description شروط صحة بيانات "الحسابات".
  */
 
+// مكتبة express-validator: بنستخدمها عشان نتأكد إن البيانات اللي اليوزر بعتها سليمة قبل ما السيرفر يعالجها.
 const { body } = require("express-validator");
 
 /**
- * قواعد التحقق لعملية التسجيل
+ * قواعد التحقق لعملية التسجيل (Register)
  */
 const registerValidator = [
-  body("name").trim().isLength({ min: 2, max: 60 }),
+  // الاسم: لازم يكون موجود وطوله بين 2 و 60 حرف.
+  body("name").trim().isLength({ min: 2, max: 60 }).withMessage("Name must be between 2 and 60 chars"),
+  
+  // اليوزر نيم: لازم يكون حروف وأرقام ونقطة أو شرطة بس.
   body("username")
     .trim()
     .toLowerCase()
     .matches(/^[a-z0-9_.]+$/)
     .withMessage("Username can contain letters, numbers, underscore and dot")
     .isLength({ min: 3, max: 24 }),
+    
+  // الإيميل: لازم يكون بصيغة ايميل صحيحة.
   body("email")
     .trim()
     .isEmail()
     .withMessage("Please enter a valid email address")
-    .normalizeEmail()
-    .custom((value) => {
-      const allowedDomains = ["gmail.com", "outlook.com", "icloud.com", "yahoo.com", "hotmail.com"];
-      const domain = value.split("@")[1];
-      if (!allowedDomains.includes(domain)) {
-        throw new Error("Only emails from Gmail, Outlook, iCloud, Yahoo, or Hotmail are allowed");
-      }
-      return true;
-    }),
-  body("phoneNumber")
-    .trim()
-    .notEmpty()
-    .withMessage("Phone number is required")
-    .matches(/^\+?[0-9]{10,15}$/)
-    .withMessage("Please enter a valid phone number (10-15 digits)"),
+    .normalizeEmail(), // بيحول الإيميل لحروف صغيرة ويشيل النقط الزيادة (في Gmail).
+    
+  // الباسورد: لازم يكون قوي (8 حروف على الأقل).
   body("password")
     .isLength({ min: 8, max: 64 })
-    .withMessage("Password must be at least 8 characters long")
-    .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/)
-    .withMessage("Password must contain at least one uppercase letter, one lowercase letter, one number and one special character"),
+    .withMessage("Password must be at least 8 characters long"),
 ];
 
 /**
- * قواعد التحقق لعملية تسجيل الدخول
+ * قواعد التحقق لعملية تسجيل الدخول (Login)
  */
 const loginValidator = [
-  body("email").trim().isEmail().normalizeEmail(),
+  body("email").trim().isEmail().withMessage("Valid email is required"),
   body("password").notEmpty().withMessage("Password is required"),
 ];
 

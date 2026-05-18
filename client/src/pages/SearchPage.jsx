@@ -1,15 +1,35 @@
+/**
+ * @file SearchPage.jsx
+ * @description صفحة "البحث" (The Search Page).
+ */
+
 import { useState } from "react";
+// مكونات React-Bootstrap.
 import { Button, Card, Col, Form, Row, Badge, Spinner } from "react-bootstrap";
 import { useDispatch, useSelector } from "react-redux";
 import { Link } from "react-router-dom";
+// استيراد أمر تنفيذ البحث من الـ searchSlice.
 import { runGlobalSearch } from "../features/search/searchSlice";
+// مكون عرض البوستات.
 import PostCard from "../components/posts/PostCard";
 
 const SearchPage = () => {
-  const [query, setQuery] = useState("");
+  const [query, setQuery] = useState(""); // كلمة البحث اللي اليوزر بيكتبها.
   const dispatch = useDispatch();
+  
+  // سحب نتائج البحث وحالة التحميل.
   const { users, posts, status } = useSelector((state) => state.search);
   const { user: currentUser } = useSelector((state) => state.auth);
+
+  /**
+   * وظيفة تنفيذ البحث لما اليوزر يدوس Enter أو زرار البحث
+   */
+  const handleSearch = (e) => {
+    e.preventDefault();
+    if (query.trim()) {
+      dispatch(runGlobalSearch(query.trim()));
+    }
+  };
 
   return (
     <div className="search-page pb-5">
@@ -18,13 +38,7 @@ const SearchPage = () => {
           <Card className="dashboard-card border-0 shadow-sm">
             <Card.Body className="p-4">
               <h4 className="fw-bold mb-3">Search SocialSphere</h4>
-              <Form
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  if (query.trim()) dispatch(runGlobalSearch(query));
-                }}
-                className="d-flex gap-2"
-              >
+              <Form onSubmit={handleSearch} className="d-flex gap-2">
                 <Form.Control
                   size="lg"
                   placeholder="Find people, posts, or #tags..."

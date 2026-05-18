@@ -1,3 +1,10 @@
+/**
+ * @file RegisterPage.jsx
+ * @description صفحة "إنشاء حساب جديد" (Sign Up).
+ * هنا اليوزر بيملا بياناته (الاسم، الايميل، التليفون، الباسورد) عشان ينضم للمنصة.
+ * فيها نظام Validation عشان نتأكد إن كل حاجة مكتوبة صح قبل ما نبعتها للسيرفر.
+ */
+
 import { useEffect, useState } from "react";
 import { Alert, Button, Card, Col, Container, Form, Row, Spinner } from "react-bootstrap";
 import { Link, useNavigate } from "react-router-dom";

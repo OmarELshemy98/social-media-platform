@@ -1,6 +1,8 @@
 /**
  * @file generateToken.js
- * @description وظيفة لتوليد رمز JWT (JSON Web Token) للمستخدمين.
+ * @description الفايل ده فيه وظيفة واحدة: "توليد التوكن" (JWT Generation).
+ * لما اليوزر بيدخل صح، بنستخدم الفانكشن دي عشان نطلع له "الكارنيه" (Token) اللي هيفضل معاه.
+ * التوكن ده بيبقى متفر بنوع سر (Secret Key) وصلاحيته غالباً 7 أيام.
  */
 
 const jwt = require("jsonwebtoken");

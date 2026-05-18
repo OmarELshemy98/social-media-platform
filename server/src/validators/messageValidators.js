@@ -1,3 +1,9 @@
+/**
+ * @file messageValidators.js
+ * @description شروط صحة بيانات "الرسائل".
+ * بنتحقق إن الرسالة مش فاضية وإن اليوزر اللي باعتين له الرسالة موجود فعلاً.
+ */
+
 const { body } = require("express-validator");
 
 const sendMessageValidator = [

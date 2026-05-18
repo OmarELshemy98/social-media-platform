@@ -1,6 +1,13 @@
+/**
+ * @file MessagesPage.jsx
+ * @description صفحة "المحادثات والرسائل" (The Chat System).
+ */
+
 import { useEffect, useMemo, useState } from "react";
+// مكونات React-Bootstrap للتنسيق.
 import { Button, Card, Col, Form, Row } from "react-bootstrap";
 import { useDispatch, useSelector } from "react-redux";
+// استيراد أوامر إدارة الرسائل.
 import { 
   fetchConversationMessages, 
   fetchConversations, 
@@ -11,16 +18,21 @@ import {
 
 const MessagesPage = () => {
   const dispatch = useDispatch();
+  // States محلية لكتابة رسالة جديدة أو بدء شات جديد.
   const [draft, setDraft] = useState("");
   const [newChatUsername, setNewChatUsername] = useState("");
   const [showNewChat, setShowNewChat] = useState(false);
+  
+  // سحب البيانات من مخزن الرسائل والمصادقة.
   const { conversations, messages, activeConversationId } = useSelector((state) => state.messages);
   const { user } = useSelector((state) => state.auth);
 
+  // أول ما الصفحة تفتح بنجيب كل المحادثات اللي اليوزر مشترك فيها.
   useEffect(() => {
     dispatch(fetchConversations());
   }, [dispatch]);
 
+  // لو اليوزر فاتح محادثة معينة، بنعمل Polling (تحديث تلقائي) كل 8 ثواني عشان نجيب الرسايل الجديدة.
   useEffect(() => {
     if (!activeConversationId) return undefined;
     const interval = setInterval(() => {
@@ -29,6 +41,7 @@ const MessagesPage = () => {
     return () => clearInterval(interval);
   }, [dispatch, activeConversationId]);
 
+  // بنحسب بيانات المحادثة النشطة والشخص التاني اللي بنكلمه.
   const activeConversation = useMemo(
     () => conversations.find((item) => item._id === activeConversationId),
     [conversations, activeConversationId]

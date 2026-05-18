@@ -1,6 +1,7 @@
 /**
  * @file profileRoutes.js
- * @description تعريف مسارات الملفات الشخصية.
+ * @description عناوين (Endpoints) الملفات الشخصية.
+ * بنحدد هنا كل حاجة تخص البروفايل: جلب البيانات، التحديث، طلبات الصداقة، الحظر، وإعدادات الحساب.
  */
 
 const express = require("express");

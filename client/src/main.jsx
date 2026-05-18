@@ -1,6 +1,8 @@
 /**
  * @file main.jsx
- * @description نقطة الدخول الرئيسية لتطبيق React. يقوم بإعداد Redux و Router وتهيئتهما.
+ * @description دي "نقطة الانطلاق" (Entry Point) بتاعة الموقع كله.
+ * هنا بنربط الـ React بالـ HTML، وبنحط الـ Redux Provider عشان الموقع كله يشوف البيانات.
+ * كمان بنشغل الـ Router عشان التنقل بين الصفحات، وبنعمل تهيئة للثيم (Dark/Light) ولليوزر لو مسجل دخول.
  */
 
 import { StrictMode } from "react";

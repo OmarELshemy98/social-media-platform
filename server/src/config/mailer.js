@@ -1,6 +1,8 @@
 /**
  * @file mailer.js
- * @description إعدادات إرسال البريد الإلكتروني باستخدام Nodemailer.
+ * @description الفايل ده مسؤول عن إرسال الإيميلات من السيرفر.
+ * بنستخدم مكتبة Nodemailer عشان نبعت ايميلات زي (رسالة الترحيب) أو (رابط تغيير الباسورد).
+ * لو مش ضابط إعدادات الـ SMTP في الـ .env، بيبعت الإيميل كـ JSON في الـ console للتجربة.
  */
 
 const nodemailer = require("nodemailer");

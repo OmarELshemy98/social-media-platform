@@ -1,6 +1,8 @@
 /**
  * @file router.jsx
- * @description إعداد مسارات التطبيق وتحديد الصفحات العامة والمحمية.
+ * @description الفايل ده هو "خريطة الموقع" (Navigation).
+ * بنحدد فيه كل صفحة في الموقع اللينك بتاعها إيه (مثلاً /login أو /profile).
+ * كمان بنستخدم فيه الـ ProtectedRoute عشان نمنع أي حد مش مسجل دخول إنه يدخل على الصفحات الخاصة.
  */
 
 import { createBrowserRouter } from "react-router-dom";

@@ -1,46 +1,44 @@
 /**
  * @file Message.js
- * @description نموذج (Model) الرسائل الخاصة بين المستخدمين.
+ * @description الفايل ده بيحدد "شكل الرسالة الواحدة" في الشات.
  */
 
 const mongoose = require("mongoose");
 
-// تعريف هيكل بيانات الرسالة
 const messageSchema = new mongoose.Schema(
   {
-    // المحادثة التي تنتمي إليها الرسالة
+    // المحادثة اللي الرسالة دي تابعة ليها.
     conversation: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Conversation",
       required: true,
-      index: true,
     },
-    // المرسل
+    // مين اللي بعت الرسالة.
     sender: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: true,
     },
-    // المستقبل
+    // مين اللي استلم الرسالة.
     receiver: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: true,
     },
-    // محتوى الرسالة
+    // نص الرسالة.
     content: {
       type: String,
       required: true,
       trim: true,
       maxlength: 1000,
     },
-    // حالة القراءة
+    // هل الرسالة اتقرأت ولا لسه؟
     isRead: {
       type: Boolean,
       default: false,
     },
   },
-  { timestamps: true }
+  { timestamps: true } // بيسيف وقت الإرسال.
 );
 
 module.exports = mongoose.model("Message", messageSchema);

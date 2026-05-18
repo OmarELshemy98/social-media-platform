@@ -1,14 +1,23 @@
+/**
+ * @file ProfilePage.jsx
+ * @description صفحة "الملف الشخصي" (The Profile).
+ * دي الصفحة اللي بتعرض بيانات اليوزر (صورته، البايو، الأصدقاء، والبوستات بتاعته).
+ */
+
 import { useEffect, useState } from "react";
+// مكونات React-Bootstrap للتنسيق السريع والجميل.
 import { Button, Card, Form, Row, Col, Nav, Tab, Modal } from "react-bootstrap";
+// Hooks من Redux عشان نكلم المخزن ونبعت أوامر.
 import { useDispatch, useSelector } from "react-redux";
+// Hooks من React Router للتنقل وقراءة الـ Parameters من الرابط.
 import { useNavigate, useParams } from "react-router-dom";
+
+// استيراد الأوامر (Actions) من السلايسات المختلفة.
 import { 
   fetchProfileByUsername, 
   updateMyProfile,
   sendFriendRequest,
   acceptFriendRequest,
-  unfriendUser,
-  blockUser
 } from "../features/profile/profileSlice";
 import { 
   startConversationWithUser,
@@ -21,55 +30,52 @@ import {
   optimisticToggleLike, 
   toggleLikePost 
 } from "../features/posts/postsSlice";
+
+// خدمة رفع الصور.
 import { uploadImage } from "../services/uploadService";
+// مكونات عرض البوستات.
 import PostCard from "../components/posts/PostCard";
 
 const ProfilePage = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  // بنجيب الـ username من الرابط (مثلاً: /profile/ahmed).
   const { username } = useParams();
+  
+  // بنسحب بيانات اليوزر الحالي والبروفايل المعروض من الـ Redux.
   const { user: currentUser } = useSelector((state) => state.auth);
   const { profileUser, profilePosts, relationship } = useSelector((state) => state.profile);
   const { messages, activeConversationId } = useSelector((state) => state.messages);
   
+  // States محلية لإدارة "تعديل البروفايل".
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState({ name: "", bio: "", avatarUrl: "", coverUrl: "" });
   const [avatarFile, setAvatarFile] = useState(null);
   const [coverFile, setCoverFile] = useState(null);
   const [isUploading, setIsUploading] = useState(false);
 
-  // States for Quick Chat Popup
+  // States لإدارة "نافذة الشات السريع" (Popup Chat).
   const [showChatModal, setShowNewChatModal] = useState(false);
   const [chatDraft, setChatDraft] = useState("");
 
+  // بنحدد هل ده بروفايلي أنا ولا بروفايل حد تاني؟
   const targetUsername = username || currentUser?.username;
   const isOwner = targetUsername === currentUser?.username;
 
+  // بنجيب بيانات البروفايل أول ما الصفحة تفتح أو لما الـ username يتغير.
   useEffect(() => {
     if (targetUsername) dispatch(fetchProfileByUsername(targetUsername));
   }, [dispatch, targetUsername]);
 
-  // Interval for refreshing messages when popup is open
-  useEffect(() => {
-    let interval;
-    if (showChatModal && activeConversationId) {
-      interval = setInterval(() => {
-        dispatch(fetchConversationMessages(activeConversationId));
-      }, 5000);
-    }
-    return () => clearInterval(interval);
-  }, [dispatch, showChatModal, activeConversationId]);
-
-  const handleLike = async (postId) => {
-    dispatch(optimisticToggleLike({ postId, userId: currentUser.id || currentUser._id }));
-    await dispatch(toggleLikePost(postId));
-  };
-
+  /**
+   * وظيفة فتح الشات السريع مع صاحب البروفايل
+   */
   const handleMessageClick = async () => {
     if (profileUser?.username) {
+      // بنبدأ محادثة وبنجيب الرسايل القديمة.
       const result = await dispatch(startConversationWithUser(profileUser.username)).unwrap();
       await dispatch(fetchConversationMessages(result._id));
-      setShowNewChatModal(true);
+      setShowNewChatModal(true); // بنفتح النافذة.
     }
   };
 

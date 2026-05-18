@@ -1,36 +1,48 @@
 /**
  * @file authController.js
- * @description التحكم في عمليات المصادقة (التسجيل، تسجيل الدخول، الحصول على بيانات المستخدم الحالي).
+ * @description الفايل ده هو "المسؤول عن الحسابات" (Authentication).
+ * جواه بنعمل كل العمليات اللي ليها علاقة باليوزر:
+ * - Register: يوزر جديد بيعمل حساب.
+ * - Login: يوزر بيدخل ايميله وباسورده.
+ * - Forgot/Reset Password: لو اليوزر نسي الباسورد وعايز يغيره.
+ * - Get Current User: بنعرف مين اليوزر اللي مسجل دخول دلوقتي.
  */
 
-const bcrypt = require("bcryptjs"); // لتشفير ومقارنة كلمات المرور
-const User = require("../models/User"); // استيراد نموذج المستخدم
-const generateToken = require("../utils/generateToken"); // وظيفة توليد JWT
-const { sendWelcomeEmail, sendResetPasswordEmail } = require("../config/mailer"); // وظيفة إرسال بريد ترحيبي
-const crypto = require("crypto"); // لتوليد رموز عشوائية
+// مكتبةbcryptjs: بنستخدمها عشان نشفر الباسورد، مفيش باسورد بيتسيف زي ما هو أبداً للأمان.
+const bcrypt = require("bcryptjs");
+// نموذج المستخدم (User Model): ده اللي بيعرفنا شكل الداتا في قاعدة البيانات وبنستخدمه عشان نكلمها.
+const User = require("../models/User");
+// وظيفة توليد التوكن: دي اللي بتطلع "الكارنيه" (JWT) اللي اليوزر هيمشي بيه في الموقع.
+const generateToken = require("../utils/generateToken");
+// مكتبة mailer: بنستخدمها عشان نبعت إيميلات حقيقية لليوزر (ترحيب أو تغيير باسورد).
+const { sendWelcomeEmail, sendResetPasswordEmail } = require("../config/mailer");
+// مكتبة crypto: موجودة في Node.js بنستخدمها عشان نطلع أكواد عشوائية وسرية.
+const crypto = require("crypto");
 
 /**
- * تسجيل مستخدم جديد
+ * وظيفة تسجيل مستخدم جديد (Register)
  */
 const registerUser = async (req, res, next) => {
   try {
+    // بناخد البيانات اللي اليوزر كتبها في الفورم (الاسم، اليوزر نيم، الإيميل، التليفون، الباسورد).
     const { name, username, email, phoneNumber, password } = req.body;
 
-    // التحقق مما إذا كان البريد الإلكتروني أو اسم المستخدم موجوداً مسبقاً
+    // بنشيك الأول: هل الإيميل ده موجود عندنا قبل كده؟ لو موجود بنقوله "معلش استعمل إيميل تاني".
     const existingUserByEmail = await User.findOne({ email: email.toLowerCase() });
     if (existingUserByEmail) {
       return res.status(409).json({ message: "This email is already registered. Please use another email or login." });
     }
 
+    // بنشيك برضه على اليوزر نيم: لازم يكون فريد ومحدش غيره واخده.
     const existingUserByUsername = await User.findOne({ username: username.toLowerCase() });
     if (existingUserByUsername) {
       return res.status(409).json({ message: "This username is already taken. Please choose a different one." });
     }
 
-    // تشفير كلمة المرور قبل الحفظ في قاعدة البيانات
+    // هنا بقى بنشفر الباسورد: بنحوله لشفرة طويلة (Hash) مستحيل حد يفهمها، وبنعمل ده 12 مرة (Salt rounds) لزيادة الأمان.
     const hashedPassword = await bcrypt.hash(password, 12);
 
-    // إنشاء المستخدم الجديد
+    // بنكريت اليوزر الجديد في قاعدة البيانات بالبيانات اللي معانا والباسورد المتشفر.
     const user = await User.create({
       name,
       username: username.toLowerCase(),
@@ -39,14 +51,15 @@ const registerUser = async (req, res, next) => {
       password: hashedPassword,
     });
 
-    // إرسال بريد إلكتروني ترحيبي (يتم تشغيله في الخلفية)
+    // بنبعت إيميل ترحيب لليوزر، وبنعمل ده "async" يعني في الخلفية عشان السيرفر ميعطلش.
     sendWelcomeEmail({ name: user.name, email: user.email }).catch((err) => {
       console.error(`Welcome email failed: ${err.message}`);
     });
 
-    // توليد رمز JWT للمستخدم الجديد
+    // بنطلع لليوزر "التوكن" (JWT) بتاعه عشان يبدأ يستخدم الموقع فوراً.
     const token = generateToken({ id: user._id });
 
+    // بنرد على الفرونت إند بإن العملية نجحت وبنبعت بيانات اليوزر (من غير الباسورد طبعاً).
     return res.status(201).json({
       message: "User registered successfully",
       token,
@@ -60,32 +73,38 @@ const registerUser = async (req, res, next) => {
       },
     });
   } catch (error) {
+    // لو حصل أي غلط غير متوقع، بنبعته للـ Error Middleware هو يتصرف.
     return next(error);
   }
 };
 
 /**
- * تسجيل الدخول
+ * وظيفة تسجيل الدخول (Login)
  */
 const loginUser = async (req, res, next) => {
   try {
+    // بناخد الإيميل والباسورد اللي اليوزر كتبهم.
     const { email, password } = req.body;
-    // البحث عن المستخدم ببريده الإلكتروني مع جلب كلمة المرور المشفرة
+    
+    // بندور على اليوزر في قاعدة البيانات باستخدام الإيميل.
+    // لاحظ إننا كاتبين select("+password") لأن الباسورد معمول له مخفي (select: false) في الـ Model كأمان.
     const user = await User.findOne({ email }).select("+password");
 
+    // لو ملقيناش يوزر بالإيميل ده، بنقوله "البيانات غلط" (لأسباب أمنية مش بنقوله الإيميل مش موجود بالظبط).
     if (!user) {
       return res.status(401).json({ message: "Invalid email or password" });
     }
 
-    // مقارنة كلمة المرور المدخلة مع كلمة المرور المشفرة في قاعدة البيانات
+    // بنقارن الباسورد اللي اليوزر كتبه بالباسورد المتشفر اللي عندنا في الداتا بيز باستخدام bcrypt.
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
       return res.status(401).json({ message: "Invalid email or password" });
     }
 
-    // توليد رمز JWT
+    // لو كل حاجة صح، بنطلع له توكن جديد.
     const token = generateToken({ id: user._id });
 
+    // بنبعت بيانات اليوزر والتوكن للفرونت إند.
     return res.status(200).json({
       message: "Login successful",
       token,

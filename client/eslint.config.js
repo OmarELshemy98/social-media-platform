@@ -1,3 +1,9 @@
+/**
+ * @file eslint.config.js
+ * @description فايل "قواعد الكود" (ESLint).
+ * ده اللي بيراقب الكود بتاعنا وإحنا بنكتبه، ولو في غلطة أو حاجة مش ماشية مع القواعد اللي حددناها، بيطلعلنا تحذير أو خطأ عشان نصلحه ونخلي الكود نظيف.
+ */
+
 import js from '@eslint/js'
 import globals from 'globals'
 import reactHooks from 'eslint-plugin-react-hooks'

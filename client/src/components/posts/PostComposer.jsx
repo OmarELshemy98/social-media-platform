@@ -1,3 +1,10 @@
+/**
+ * @file PostComposer.jsx
+ * @description الفايل ده هو "صندوق كتابة البوستات" (Post Creator).
+ * هنا بنقدر نكتب بوست جديد، نضيف هاشتاجات، ونرفع صورة.
+ * بيستخدم الـ uploadService عشان يرفع الصورة للسيرفر الأول، وبعدين يبعت بيانات البوست كاملة.
+ */
+
 import { useState } from "react";
 import { Button, Card, Form } from "react-bootstrap";
 import { uploadImage } from "../../services/uploadService";
