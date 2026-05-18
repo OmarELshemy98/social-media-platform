@@ -20,33 +20,31 @@ const globalSearch = async (req, res, next) => {
     if (!q) return res.status(200).json({ users: [], posts: [] });
 
     // بنجهز طلب البحث عن المستخدمين:
-    // بندور في اليوزر نيم، الاسم، أو الإيميل باستخدام Regular Expression (regex) عشان البحث يكون مرن (مش لازم الكلمة بالظبط).
-    // الخيار "i" معناه إن البحث Case-insensitive (مش بيفرق بين حروف كبيرة وصغيرة).
-    const usersPromise = User.find({
+    const users = await User.find({
       $or: [
         { username: { $regex: q, $options: "i" } },
         { name: { $regex: q, $options: "i" } },
         { email: { $regex: q, $options: "i" } },
       ],
     })
-      .select("name username avatarUrl bio") // بنختار الحقول اللي تظهر بس.
-      .limit(10); // بنجيب أول 10 مستخدمين بس.
+      .select("name username avatarUrl bio")
+      .limit(10);
+
+    // بناخد الـ IDs بتاعة المستخدمين اللي لقيناهم عشان نجيب البوستات بتاعتهم برضه.
+    const userIds = users.map(u => u._id);
 
     // بنجهز طلب البحث عن المنشورات:
-    // بندور في المحتوى، الهاشتاجات، أو باستخدام الفهرس النصي ($text).
-    const postsPromise = Post.find({
+    // بندور في المحتوى أو الهاشتاجات أو المنشورات اللي كتبها المستخدمين اللي ظهروا في البحث.
+    const posts = await Post.find({
       $or: [
-        { $text: { $search: q } },
+        { author: { $in: userIds } }, // بوستات كتبها الناس اللي ظهروا في البحث
         { tags: { $regex: q, $options: "i" } },
         { content: { $regex: q, $options: "i" } },
       ],
     })
-      .populate("author", "name username avatarUrl") // بنجيب بيانات كاتب البوست.
-      .sort({ createdAt: -1 }) // الأحدث بيظهر أولاً.
-      .limit(20); // بنجيب أول 20 بوست بس.
-
-    // بنشغل الطلبين في نفس الوقت (Parallel) عشان السرعة.
-    const [users, posts] = await Promise.all([usersPromise, postsPromise]);
+      .populate("author", "name username avatarUrl")
+      .sort({ createdAt: -1 })
+      .limit(20);
     
     // بنبعت كل النتائج للفرونت إند.
     return res.status(200).json({ users, posts });

@@ -6,6 +6,13 @@
 import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
 // استيراد الـ API اللي عملناه بـ Axios عشان نكلم السيرفر.
 import api from "../../services/api";
+// استيراد الأكشنز من postsSlice عشان نحدث بروفايل اليوزر لما يحصل تفاعل مع البوستات بتاعته.
+import { 
+  addCommentToPost, 
+  deletePost, 
+  toggleLikePost, 
+  optimisticToggleLike 
+} from "../posts/postsSlice";
 
 // الحالة الابتدائية لمخزن الملف الشخصي.
 const initialState = {
@@ -59,6 +66,36 @@ export const acceptFriendRequest = createAsyncThunk(
       return data;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || "Failed to accept request");
+    }
+  }
+);
+
+/**
+ * وظيفة لإلغاء الصداقة.
+ */
+export const unfriendUser = createAsyncThunk(
+  "profile/unfriendUser",
+  async (userId, { rejectWithValue }) => {
+    try {
+      const { data } = await api.post(`/profiles/${userId}/unfriend`);
+      return data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || "Failed to unfriend");
+    }
+  }
+);
+
+/**
+ * وظيفة لحظر مستخدم.
+ */
+export const blockUser = createAsyncThunk(
+  "profile/blockUser",
+  async (userId, { rejectWithValue }) => {
+    try {
+      const { data } = await api.post(`/profiles/${userId}/block`);
+      return data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || "Failed to block user");
     }
   }
 );
@@ -124,13 +161,51 @@ const profileSlice = createSlice({
         // بنحدث حالة العلاقة لـ "أصدقاء".
         state.relationship = "friends";
       })
+      .addCase(unfriendUser.fulfilled, (state) => {
+        // بنحدث حالة العلاقة لـ "لا يوجد".
+        state.relationship = "none";
+      })
+      .addCase(blockUser.fulfilled, (state) => {
+        // بنحدث حالة العلاقة لـ "محظور".
+        state.relationship = "blocked";
+      })
       .addCase(fetchSuggestions.fulfilled, (state, action) => {
         state.suggestions = action.payload;
       })
       .addCase(updateMyProfile.fulfilled, (state, action) => {
         // لما نحدث بياناتنا بنجاح، بنحدثها في الـ state.
         state.profileUser = action.payload;
-      });
+      })
+      .addCase(toggleLikePost.fulfilled, (state, action) => {
+        const post = state.profilePosts.find((item) => item._id === String(action.payload.postId));
+        if (post) {
+          post.likes = action.payload.likes; // تحديث نهائي من السيرفر
+        }
+      })
+      .addCase(addCommentToPost.fulfilled, (state, action) => {
+        const post = state.profilePosts.find((item) => item._id === action.payload.postId);
+        if (post) {
+          post.comments = action.payload.comments;
+        }
+      })
+      .addCase(deletePost.fulfilled, (state, action) => {
+        state.profilePosts = state.profilePosts.filter((item) => item._id !== action.payload);
+      })
+      // التعامل مع الأكشنز بتاعة البوستات عشان نحدث الـ profilePosts
+      .addMatcher(
+        (action) => action.type === optimisticToggleLike.type,
+        (state, action) => {
+          const { postId, userId } = action.payload;
+          const post = state.profilePosts.find((item) => item._id === postId);
+          if (!post) return;
+          const exists = post.likes.some((id) => String(id) === String(userId));
+          if (exists) {
+            post.likes = post.likes.filter((id) => String(id) !== String(userId));
+          } else {
+            post.likes.push(userId);
+          }
+        }
+      );
   },
 });
 

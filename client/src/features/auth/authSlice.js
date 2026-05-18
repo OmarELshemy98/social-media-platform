@@ -77,9 +77,9 @@ export const forgotPassword = createAsyncThunk(
   async (payload, { rejectWithValue }) => {
     try {
       const { data } = await api.post("/auth/forgot-password", payload);
-      return data.message;
+      return data; // نرجع الـ data كاملة (بما فيها الـ resetToken)
     } catch (error) {
-      return rejectWithValue(error.response?.data?.message || "Failed to send reset email");
+      return rejectWithValue(error.response?.data?.message || "Failed to verify details");
     }
   }
 );

@@ -40,6 +40,9 @@ const searchSlice = createSlice({
         state.users = action.payload.users;
         state.posts = action.payload.posts;
         state.query = action.payload.query;
+      })
+      .addCase(runGlobalSearch.rejected, (state) => {
+        state.status = "failed"; // لو حصل غلط بنوقف التحميل.
       });
   },
 });

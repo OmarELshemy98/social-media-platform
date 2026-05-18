@@ -130,48 +130,43 @@ const getCurrentUser = async (req, res) => {
 };
 
 /**
- * طلب استعادة كلمة المرور
+ * طلب استعادة كلمة المرور (التحقق من البيانات)
  */
 const forgotPassword = async (req, res, next) => {
   try {
-    const { email, username } = req.body;
+    let { email, username, phoneNumber } = req.body;
 
-    // البحث عن المستخدم بالبريد واسم المستخدم معاً للتأكد
+    // تنظيف اسم المستخدم من علامة @ إذا كانت موجودة في البداية
+    if (username && username.startsWith("@")) {
+      username = username.substring(1);
+    }
+
+    // البحث عن المستخدم بالبريد واسم المستخدم ورقم الهاتف معاً
     const user = await User.findOne({ 
       email: email.toLowerCase(), 
-      username: username.toLowerCase() 
+      username: username.toLowerCase(),
+      phoneNumber: phoneNumber.trim()
     });
 
     if (!user) {
-      return res.status(404).json({ message: "No user found with this email and username" });
+      return res.status(404).json({ message: "No user found with these details" });
     }
 
-    // توليد رمز استعادة عشوائي
+    // بدلاً من إرسال إيميل، سنقوم بتوليد توكن مؤقت وإرجاعه للفرونت إند 
+    // ليتمكن المستخدم من تغيير الباسورد فوراً
     const resetToken = crypto.randomBytes(20).toString("hex");
-
-    // تشفير الرمز وحفظه في قاعدة البيانات مع وقت انتهاء (ساعة واحدة)
     user.resetPasswordToken = crypto
       .createHash("sha256")
       .update(resetToken)
       .digest("hex");
-    
-    user.resetPasswordExpire = Date.now() + 3600000; // 1 hour
+    user.resetPasswordExpire = Date.now() + 600000; // 10 minutes only for security
 
     await user.save();
 
-    // إنشاء رابط الاستعادة
-    const resetUrl = `${process.env.CLIENT_URL || "http://localhost:5173"}/reset-password/${resetToken}`;
-
-    // إرسال البريد الإلكتروني
-    try {
-      await sendResetPasswordEmail({ email: user.email, resetUrl });
-      res.status(200).json({ message: "Password reset link sent to your email" });
-    } catch (err) {
-      user.resetPasswordToken = undefined;
-      user.resetPasswordExpire = undefined;
-      await user.save();
-      return res.status(500).json({ message: "Email could not be sent" });
-    }
+    res.status(200).json({ 
+      message: "Identity verified! You can now reset your password.", 
+      resetToken 
+    });
   } catch (error) {
     return next(error);
   }

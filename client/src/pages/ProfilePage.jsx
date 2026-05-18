@@ -18,6 +18,8 @@ import {
   updateMyProfile,
   sendFriendRequest,
   acceptFriendRequest,
+  unfriendUser,
+  blockUser
 } from "../features/profile/profileSlice";
 import { 
   startConversationWithUser,
@@ -84,6 +86,16 @@ const ProfilePage = () => {
     if (!chatDraft.trim() || !profileUser?._id) return;
     await dispatch(sendMessage({ receiverId: profileUser._id, content: chatDraft.trim() }));
     setChatDraft("");
+  };
+
+  /**
+   * وظيفة التعامل مع اللايك (الإعجاب) بالبوست
+   */
+  const handleLike = async (postId) => {
+    // بنستخدم Optimistic UI عشان نحسن تجربة المستخدم
+    dispatch(optimisticToggleLike({ postId, userId: currentUser?.id || currentUser?._id }));
+    // وبنبعت الطلب الحقيقي للسيرفر
+    await dispatch(toggleLikePost(postId));
   };
 
   return (
