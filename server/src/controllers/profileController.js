@@ -27,19 +27,19 @@ const getProfile = async (req, res, next) => {
 
     if (currentUser) {
       // لو هما أصدقاء فعلاً.
-      if (currentUser.friends.includes(user._id)) {
+      if (currentUser.friends?.includes(user._id)) {
         relationship = "friends";
       } 
       // لو أنا بعتله طلب صداقة ولسه مردش.
-      else if (currentUser.friendRequestsSent.includes(user._id)) {
+      else if (currentUser.friendRequestsSent?.includes(user._id)) {
         relationship = "request_sent";
       } 
       // لو هو اللي بعتلي طلب صداقة وأنا لسه مردتش.
-      else if (currentUser.friendRequestsReceived.includes(user._id)) {
+      else if (currentUser.friendRequestsReceived?.includes(user._id)) {
         relationship = "request_received";
       } 
       // لو أنا عامله بلوك.
-      else if (currentUser.blockedUsers.includes(user._id)) {
+      else if (currentUser.blockedUsers?.includes(user._id)) {
         relationship = "blocked";
       }
     }
@@ -288,10 +288,10 @@ const getSuggestions = async (req, res, next) => {
       _id: { 
         $nin: [
           currentUser._id, 
-          ...currentUser.friends, 
-          ...currentUser.blockedUsers,
-          ...currentUser.friendRequestsSent,
-          ...currentUser.friendRequestsReceived
+          ...(currentUser.friends || []), 
+          ...(currentUser.blockedUsers || []),
+          ...(currentUser.friendRequestsSent || []),
+          ...(currentUser.friendRequestsReceived || [])
         ] 
       }
     })

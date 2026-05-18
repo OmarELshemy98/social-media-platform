@@ -48,6 +48,14 @@ const userSchema = new mongoose.Schema(
       type: String, // رابط صورة البروفايل.
       default: "",
     },
+    coverUrl: {
+      type: String, // رابط صورة الغلاف.
+      default: "",
+    },
+    phoneNumber: {
+      type: String,
+      trim: true,
+    },
     // قائمة المتابعين: عبارة عن مصفوفة من الـ IDs بتاعة يوزرز تانيين.
     followers: [
       {
@@ -62,6 +70,33 @@ const userSchema = new mongoose.Schema(
         ref: "User",
       },
     ],
+    // طلبات الصداقة المرسلة.
+    friendRequestsSent: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+      },
+    ],
+    // طلبات الصداقة المستلمة.
+    friendRequestsReceived: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+      },
+    ],
+    // المستخدمين المحظورين.
+    blockedUsers: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+      },
+    ],
+    isActive: {
+      type: Boolean,
+      default: true,
+    },
+    resetPasswordToken: String,
+    resetPasswordExpire: Date,
   },
   { 
     // بيضيف حقلين (createdAt, updatedAt) تلقائياً عشان نعرف الحساب اتكريت إمتى.

@@ -13,11 +13,11 @@ import "bootstrap/dist/css/bootstrap.min.css"; // استيراد أنماط بو
 import "./index.css"; // استيراد الأنماط المخصصة
 import { store } from "./app/store"; // استيراد متجر Redux
 import router from "./app/router"; // استيراد إعدادات المسارات
-import { initializeTheme } from "./features/theme/themeSlice"; // وظيفة تهيئة المظهر
+import { initTheme } from "./features/theme/themeSlice"; // وظيفة تهيئة المظهر
 import { fetchCurrentUser } from "./features/auth/authSlice"; // وظيفة جلب المستخدم الحالي
 
 // تهيئة المظهر (داكن أو فاتح) عند بدء التطبيق
-store.dispatch(initializeTheme());
+store.dispatch(initTheme());
 
 // إذا كان هناك رمز دخول (Token) مخزن، حاول جلب بيانات المستخدم
 if (localStorage.getItem("token")) {
