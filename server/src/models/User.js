@@ -1,113 +1,108 @@
 /**
  * @file User.js
- * @description نموذج (Model) المستخدم في قاعدة البيانات.
+ * @description الفايل ده بيحدد "شكل بيانات المستخدم" في قاعدة البيانات (MongoDB).
  */
 
+// مكتبة Mongoose: هي اللي بتخلينا نتعامل مع MongoDB بسهولة عن طريق الـ Schemas.
 const mongoose = require("mongoose");
 
-// تعريف هيكل بيانات المستخدم
+// تعريف الـ Schema: بنحدد كل "حقل" (Field) نوعه إيه وشروطه إيه.
 const userSchema = new mongoose.Schema(
   {
     name: {
-      type: String,
-      required: true,
-      trim: true,
+      type: String, // نوعه نص.
+      required: true, // لازم اليوزر يكتبه.
+      trim: true, // بيشيل المسافات الزيادة من الجناب.
       minlength: 2,
       maxlength: 60,
     },
     username: {
       type: String,
       required: true,
-      unique: true, // يجب أن يكون فريداً
+      unique: true, // لازم يكون فريد (محدش يكرره).
       trim: true,
-      lowercase: true,
+      lowercase: true, // بيتحول لحروف صغيرة تلقائياً.
       minlength: 3,
       maxlength: 24,
     },
     email: {
       type: String,
       required: true,
-      unique: true, // يجب أن يكون فريداً
+      unique: true,
       trim: true,
       lowercase: true,
-    },
-    phoneNumber: {
-      type: String,
-      trim: true,
-      default: "",
     },
     password: {
       type: String,
       required: true,
       minlength: 6,
-      select: false, // لا يتم إرجاعه تلقائياً عند البحث عن المستخدم
+      select: false, // أهم خاصية: الباسورد مش هيرجع أبداً في نتائج البحث العادية للأمان.
     },
     bio: {
       type: String,
       trim: true,
       maxlength: 240,
-      default: "",
+      default: "", // لو مكتبش حاجة، بيبقى نص فاضي.
     },
     avatarUrl: {
-      type: String,
+      type: String, // رابط صورة البروفايل.
       default: "",
     },
     coverUrl: {
-      type: String,
+      type: String, // رابط صورة الغلاف.
       default: "",
     },
-    // قائمة المتابعين
+    phoneNumber: {
+      type: String,
+      trim: true,
+    },
+    // قائمة المتابعين: عبارة عن مصفوفة من الـ IDs بتاعة يوزرز تانيين.
     followers: [
       {
         type: mongoose.Schema.Types.ObjectId,
-        ref: "User",
+        ref: "User", // بنعرف Mongoose إن الـ IDs دي تابعة لجدول الـ User.
       },
     ],
-    // قائمة الأشخاص الذين يتابعهم المستخدم
-    following: [
-      {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "User",
-      },
-    ],
-    // طلبات الصداقة المرسلة
-    friendRequestsSent: [
-      {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "User",
-      },
-    ],
-    // طلبات الصداقة المستلمة
-    friendRequestsReceived: [
-      {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "User",
-      },
-    ],
-    // قائمة الأصدقاء
+    // قائمة الأصدقاء.
     friends: [
       {
         type: mongoose.Schema.Types.ObjectId,
         ref: "User",
       },
     ],
-    // قائمة الحظر
+    // طلبات الصداقة المرسلة.
+    friendRequestsSent: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+      },
+    ],
+    // طلبات الصداقة المستلمة.
+    friendRequestsReceived: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+      },
+    ],
+    // المستخدمين المحظورين.
     blockedUsers: [
       {
         type: mongoose.Schema.Types.ObjectId,
         ref: "User",
       },
     ],
-    // حقول استعادة كلمة المرور
-    resetPasswordToken: String,
-    resetPasswordExpire: Date,
-    // حالة الحساب
     isActive: {
       type: Boolean,
       default: true,
     },
+    resetPasswordToken: String,
+    resetPasswordExpire: Date,
   },
-  { timestamps: true } // إضافة createdAt و updatedAt تلقائياً
+  { 
+    // بيضيف حقلين (createdAt, updatedAt) تلقائياً عشان نعرف الحساب اتكريت إمتى.
+    timestamps: true 
+  }
 );
 
+// تصدير الموديل عشان نستخدمه في الـ Controllers.
 module.exports = mongoose.model("User", userSchema);

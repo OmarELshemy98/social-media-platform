@@ -1,7 +1,20 @@
+/**
+ * @file FeedPage.jsx
+ * @description دي "الصفحة الرئيسية" (The Home Feed).
+ * هنا بيظهر صندوق كتابة البوستات الجديدة، وتحته كل البوستات بتاعة الناس.
+ * بنستخدم مكتبات React و Redux و React-Bootstrap عشان نبني الواجهة.
+ */
+
 import { useEffect } from "react";
+// مكتبة React-Bootstrap: بتدينا مكونات جاهزة وشكلها حلو زي Alert, Card, Row, Col, Spinner.
 import { Alert, Card, Col, Row, Spinner } from "react-bootstrap";
+// useDispatch: عشان نبعت أوامر (Actions) للـ Redux.
+// useSelector: عشان نسحب بيانات من الـ Redux Store.
 import { useDispatch, useSelector } from "react-redux";
+// Link: عشان نتنقل بين الصفحات من غير ما الموقع يعمل ريفريش.
 import { Link } from "react-router-dom";
+
+// استيراد الأوامر (Actions) اللي هنحتاجها من الـ postsSlice.
 import { 
   fetchFeedPosts, 
   createPost, 
@@ -10,23 +23,36 @@ import {
   addCommentToPost,
   deletePost
 } from "../features/posts/postsSlice";
+// استيراد أمر جلب الاقتراحات من الـ profileSlice.
 import { fetchSuggestions } from "../features/profile/profileSlice";
+// استيراد المكونات الصغيرة اللي بنبني بيها الصفحة.
 import PostCard from "../components/posts/PostCard";
 import PostComposer from "../components/posts/PostComposer";
 
 const FeedPage = () => {
   const dispatch = useDispatch();
+  
+  // بنسحب بيانات البوستات وحالة التحميل من مخزن الـ posts.
   const { posts, status, error } = useSelector((state) => state.posts);
+  // بنسحب بيانات اليوزر اللي مسجل دخول دلوقتي.
   const { user } = useSelector((state) => state.auth);
+  // بنسحب قائمة الاقتراحات من مخزن الـ profile.
   const { suggestions } = useSelector((state) => state.profile);
 
+  // الـ useEffect دي بتشتغل أول ما الصفحة تفتح.
   useEffect(() => {
+    // بنطلب من السيرفر جلب البوستات والاقتراحات.
     dispatch(fetchFeedPosts());
     dispatch(fetchSuggestions());
   }, [dispatch]);
 
+  /**
+   * وظيفة التعامل مع اللايك
+   */
   const handleLike = async (postId) => {
+    // بنستخدم Optimistic UI: بنغير شكل القلب فوراً عند اليوزر قبل ما السيرفر يرد عشان يحس إن الموقع سريع.
     dispatch(optimisticToggleLike({ postId, userId: user.id || user._id }));
+    // وبنبعت الطلب الحقيقي للسيرفر في الخلفية.
     await dispatch(toggleLikePost(postId));
   };
 

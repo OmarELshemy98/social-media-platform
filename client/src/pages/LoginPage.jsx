@@ -1,3 +1,10 @@
+/**
+ * @file LoginPage.jsx
+ * @description صفحة "تسجيل الدخول".
+ * هنا اليوزر بيكتب بياناته (الايميل والباسورد) عشان يدخل على حسابه.
+ * لو البيانات صح، بيتم تحويله فوراً للصفحة الرئيسية.
+ */
+
 import { useEffect, useState } from "react";
 import { Alert, Button, Card, Col, Container, Form, Row, Spinner } from "react-bootstrap";
 import { Link, useNavigate } from "react-router-dom";

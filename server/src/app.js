@@ -1,42 +1,54 @@
 /**
  * @file app.js
- * @description إعداد تطبيق Express والبرمجيات الوسيطة (Middlewares) والمسارات (Routes).
+ * @description ده الفايل اللي بنجهز فيه "تطبيق Express" (الإطار بتاع السيرفر).
  */
 
 const express = require("express");
-const cors = require("cors"); // للتعامل مع طلبات من نطاقات مختلفة
-const helmet = require("helmet"); // لحماية التطبيق من خلال وضع رؤوس HTTP أمنية
-const morgan = require("morgan"); // لتسجيل تفاصيل الطلبات في وحدة التحكم (Logging)
+// مكتبة CORS: بنستخدمها عشان نسمح للفرونت إند (اللي شغال على Port 5173) إنه يكلم الباك إند (اللي شغال على Port 5000).
+const cors = require("cors"); 
+// مكتبة Helmet: بتضيف HTTP Headers أمنية عشان تحمي الموقع من بعض الهجمات المشهورة.
+const helmet = require("helmet"); 
+// مكتبة Morgan: بتطبع لنا في الـ console كل طلب (Request) جاي للسيرفر، وده مفيد جداً في الـ Debugging.
+const morgan = require("morgan"); 
 const path = require("path");
-const routes = require("./routes"); // استيراد جميع المسارات
-const { notFound, errorHandler } = require("./middlewares/errorMiddleware"); // استيراد معالجات الأخطاء
+// استيراد ملف المسارات الرئيسي اللي بيجمع كل الـ Routes.
+const routes = require("./routes"); 
+// استيراد معالجات الأخطاء المخصصة.
+const { notFound, errorHandler } = require("./middlewares/errorMiddleware"); 
 
 const app = express();
 
-// استخدام البرمجيات الوسيطة الأساسية
+// إعداد الـ Middlewares الأساسية:
 app.use(
   helmet({
-    crossOriginResourcePolicy: { policy: "cross-origin" }, // السماح بتحميل الصور من السيرفر
+    // بنعدل الإعداد ده عشان نسمح بتحميل الصور اللي متسيفة عندنا على السيرفر ونعرضها في الموقع.
+    crossOriginResourcePolicy: { policy: "cross-origin" }, 
   })
 );
 app.use(
   cors({
-    origin: process.env.CLIENT_URL || "http://localhost:5173", // السماح للواجهة الأمامية بالوصول
-    credentials: true,
+    // بنحدد إننا بنقبل طلبات من رابط الفرونت إند بس.
+    origin: process.env.CLIENT_URL || "http://localhost:5173", 
+    credentials: true, // عشان نسمح ببعت الـ Cookies أو الـ Headers الخاصة بالمصادقة.
   })
 );
-app.use(express.json({ limit: "1mb" })); // تحليل بيانات JSON الواردة
-app.use(express.urlencoded({ extended: true })); // تحليل البيانات المشفرة في الروابط
-app.use(morgan("dev")); // تسجيل الطلبات في وضع التطوير
 
-// جعل مجلد الرفع متاحاً بشكل عام للوصول للصور والملفات
+// بنخلي السيرفر يفهم البيانات اللي مبعوتة بصيغة JSON وبنحدد أقصى حجم ليها 1 ميجا.
+app.use(express.json({ limit: "1mb" })); 
+// بنخلي السيرفر يفهم البيانات المبعوتة من الـ Forms العادية.
+app.use(express.urlencoded({ extended: true })); 
+// تشغيل تسجيل الطلبات في الـ console (Logging).
+app.use(morgan("dev")); 
+
+// بنحدد إن فولدر "uploads" يكون متاح للكل (Static)، عشان لما نكتب رابط الصورة في المتصفح تفتح معانا.
 app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
 
-// استخدام المسارات الأساسية للتطبيق
+// بنربط كل المسارات بتبدأ بـ /api.
 app.use("/api", routes);
 
-// معالجة الأخطاء والمسارات غير الموجودة
+// لو اليوزر طلب رابط مش موجود، بنبعته للـ notFound middleware.
 app.use(notFound);
+// أي غلط بيحصل في السيرفر، الـ errorHandler هو اللي بيطلعه بشكل منظم.
 app.use(errorHandler);
 
 module.exports = app;

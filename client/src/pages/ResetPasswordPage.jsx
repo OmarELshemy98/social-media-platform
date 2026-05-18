@@ -1,6 +1,7 @@
 /**
  * @file ResetPasswordPage.jsx
- * @description صفحة تعيين كلمة مرور جديدة.
+ * @description صفحة "تغيير كلمة السر".
+ * دي اللي بتفتح لليوزر لما يدوس على اللينك اللي جاله في الإيميل عشان يكتب الباسورد الجديد بتاعه.
  */
 
 import { useState } from "react";

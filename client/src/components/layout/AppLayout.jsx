@@ -1,3 +1,11 @@
+/**
+ * @file AppLayout.jsx
+ * @description الفايل ده هو "الهيكل الأساسي" للموقع (The Shell).
+ * ده اللي فيه الـ Navbar اللي ثابت فوق في كل الصفحات، وفيه الزراير اللي بنتنقل بيها.
+ * كمان بيعمل تحديث تلقائي للإشعارات كل 15 ثانية عشان اليوزر يجيله تنبيهات أول بأول.
+ * والـ Outlet اللي تحت ده هو المكان اللي "الصفحات المتغيرة" بتظهر فيه.
+ */
+
 import { useEffect } from "react";
 import { Badge, Button, Container, Nav, Navbar } from "react-bootstrap";
 import { Link, NavLink, Outlet, useNavigate } from "react-router-dom";

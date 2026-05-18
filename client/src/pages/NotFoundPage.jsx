@@ -1,3 +1,9 @@
+/**
+ * @file NotFoundPage.jsx
+ * @description صفحة "الـ 404".
+ * دي اللي بتظهر لليوزر لو دخل على لينك مش موجود في الموقع بتاعنا.
+ */
+
 import { Link } from "react-router-dom";
 
 const NotFoundPage = () => {

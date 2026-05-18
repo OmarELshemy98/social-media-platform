@@ -1,13 +1,26 @@
-const Conversation = require("../models/Conversation");
-const Message = require("../models/Message");
-const Notification = require("../models/Notification");
-const User = require("../models/User");
+/**
+ * @file messageController.js
+ * @description الفايل ده هو "المسؤول عن الشات" (Chat & Messages).
+ * هنا بنتحكم في كل حاجة تخص الرسايل الخاصة بين المستخدمين.
+ */
 
+// استيراد الموديلات (Models) اللي هنحتاجها عشان نكلم الداتا بيز.
+const Conversation = require("../models/Conversation"); // موديل المحادثة (العلبة اللي بتشيل الرسايل).
+const Message = require("../models/Message"); // موديل الرسالة الواحدة.
+const Notification = require("../models/Notification"); // موديل الإشعارات عشان ننبه اليوزر لما تجيله رسالة.
+const User = require("../models/User"); // موديل اليوزر عشان نتأكد إن اليوزر اللي بنكلمه موجود.
+
+/**
+ * وظيفة للتأكد من وجود محادثة بين شخصين، ولو مش موجودة بنكريت واحدة جديدة.
+ * دي وظيفة مساعدة (Helper function) مش بتتربط بـ Route.
+ */
 const ensureConversation = async (userA, userB) => {
+  // بندور في الداتا بيز على محادثة فيها الطرفين دول بالظبط.
   let conversation = await Conversation.findOne({
     participants: { $all: [userA, userB], $size: 2 },
   });
 
+  // لو ملقيناش محادثة، بنعمل واحدة جديدة.
   if (!conversation) {
     conversation = await Conversation.create({
       participants: [userA, userB],
@@ -17,20 +30,27 @@ const ensureConversation = async (userA, userB) => {
   return conversation;
 };
 
+/**
+ * وظيفة بدء محادثة باستخدام اسم المستخدم (Username)
+ */
 const startConversationByUsername = async (req, res, next) => {
   try {
     const { username } = req.body;
+    // بندور على اليوزر اللي عايزين نكلمه.
     const targetUser = await User.findOne({ username: username.toLowerCase() });
 
     if (!targetUser) {
       return res.status(404).json({ message: "User not found" });
     }
 
+    // مينفعش حد يبعت رسالة لنفسه!
     if (String(targetUser._id) === String(req.user._id)) {
       return res.status(400).json({ message: "Cannot message yourself" });
     }
 
+    // بنتأكد إن في محادثة بينهم.
     const conversation = await ensureConversation(req.user._id, targetUser._id);
+    // بنجيب بيانات المشاركين (الاسم، الصورة) عشان نعرضهم في الفرونت إند.
     const populated = await conversation.populate("participants", "name username avatarUrl");
 
     return res.status(200).json({ conversation: populated });
@@ -39,13 +59,17 @@ const startConversationByUsername = async (req, res, next) => {
   }
 };
 
+/**
+ * وظيفة جلب كل المحادثات الخاصة بي
+ */
 const getMyConversations = async (req, res, next) => {
   try {
+    // بنجيب كل المحادثات اللي الـ ID بتاعي موجود في قائمة المشاركين فيها.
     const conversations = await Conversation.find({
       participants: req.user._id,
     })
-      .populate("participants", "name username avatarUrl")
-      .sort({ lastMessageAt: -1 });
+      .populate("participants", "name username avatarUrl") // بنجيب بيانات الناس اللي بكلمهم.
+      .sort({ lastMessageAt: -1 }); // بنرتبهم من الأحدث للأقدم حسب آخر رسالة.
 
     return res.status(200).json({ conversations });
   } catch (error) {
@@ -53,14 +77,21 @@ const getMyConversations = async (req, res, next) => {
   }
 };
 
+/**
+ * وظيفة جلب الرسايل بتاعة محادثة معينة
+ */
 const getMessagesByConversation = async (req, res, next) => {
   try {
+    // بنجيب المحادثة بالـ ID بتاعها.
     const conversation = await Conversation.findById(req.params.conversationId);
     if (!conversation) return res.status(404).json({ message: "Conversation not found" });
+    
+    // بنشيك: هل اليوزر اللي باعت الطلب هو طرف في المحادثة دي فعلاً؟
     if (!conversation.participants.some((id) => String(id) === String(req.user._id))) {
       return res.status(403).json({ message: "Access denied for this conversation" });
     }
 
+    // بنجيب كل الرسايل التابعة للمحادثة دي، وبنرتبها من الأقدم للأحدث (عشان تظهر زي الشات الطبيعي).
     const messages = await Message.find({ conversation: conversation._id })
       .populate("sender", "name username avatarUrl")
       .populate("receiver", "name username avatarUrl")
@@ -72,11 +103,16 @@ const getMessagesByConversation = async (req, res, next) => {
   }
 };
 
+/**
+ * وظيفة إرسال رسالة جديدة
+ */
 const sendMessage = async (req, res, next) => {
   try {
     const { receiverId, content } = req.body;
+    // بنتأكد إن في محادثة أو بنكريت واحدة.
     const conversation = await ensureConversation(req.user._id, receiverId);
 
+    // بنسيف الرسالة في الداتا بيز.
     const message = await Message.create({
       conversation: conversation._id,
       sender: req.user._id,
@@ -84,9 +120,11 @@ const sendMessage = async (req, res, next) => {
       content,
     });
 
+    // بنحدث وقت "آخر رسالة" في المحادثة عشان تطلع فوق في القائمة.
     conversation.lastMessageAt = new Date();
     await conversation.save();
 
+    // لو أنا ببعت لحد تاني (مش لنفسي)، بنبعتله إشعار.
     if (String(receiverId) !== String(req.user._id)) {
       await Notification.create({
         recipient: receiverId,
@@ -96,19 +134,21 @@ const sendMessage = async (req, res, next) => {
       });
     }
 
+    // بنرجع الرسالة كاملة ببيانات المرسل.
     const populated = await message.populate([
       { path: "sender", select: "name username avatarUrl" },
-      { path: "receiver", select: "name username avatarUrl" },
+      { path: "receiver", select: "name username avatarUrl" }
     ]);
-    return res.status(201).json({ message: populated, conversationId: conversation._id });
+
+    return res.status(201).json({ message: populated });
   } catch (error) {
     return next(error);
   }
 };
 
-module.exports = {
-  getMyConversations,
-  getMessagesByConversation,
-  sendMessage,
-  startConversationByUsername,
+module.exports = { 
+  startConversationByUsername, 
+  getMyConversations, 
+  getMessagesByConversation, 
+  sendMessage 
 };

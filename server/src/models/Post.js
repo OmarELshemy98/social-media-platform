@@ -1,16 +1,16 @@
 /**
  * @file Post.js
- * @description نموذج (Model) المنشورات والتعليقات في قاعدة البيانات.
+ * @description الفايل ده بيحدد "شكل المنشور" (Post) في قاعدة البيانات.
  */
 
 const mongoose = require("mongoose");
 
-// تعريف هيكل بيانات التعليق
+// بنعرف هيكل الكومنت (Comment Schema) كجزء فرعي من البوست.
 const commentSchema = new mongoose.Schema(
   {
     author: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "User", // صاحب التعليق
+      ref: "User", // بنربطه بجدول اليوزرز عشان نعرف مين اللي كتب الكومنت.
       required: true,
     },
     content: {
@@ -19,42 +19,16 @@ const commentSchema = new mongoose.Schema(
       trim: true,
       maxlength: 500,
     },
-    // الردود على التعليق
-    replies: [
-      {
-        author: {
-          type: mongoose.Schema.Types.ObjectId,
-          ref: "User",
-          required: true,
-        },
-        content: {
-          type: String,
-          required: true,
-          trim: true,
-          maxlength: 500,
-        },
-        createdAt: {
-          type: Date,
-          default: Date.now,
-        },
-      },
-    ],
-    createdAt: {
-      type: Date,
-      default: Date.now,
-    },
   },
-  { _id: true }
+  { timestamps: true } // بنسيف وقت كتابة الكومنت.
 );
 
-// تعريف هيكل بيانات المنشور
 const postSchema = new mongoose.Schema(
   {
     author: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "User", // كاتب المنشور
+      ref: "User", // صاحب البوست.
       required: true,
-      index: true,
     },
     content: {
       type: String,
@@ -63,9 +37,10 @@ const postSchema = new mongoose.Schema(
       maxlength: 2000,
     },
     imageUrl: {
-      type: String, // رابط الصورة المرفقة إن وجدت
+      type: String, // لو البوست فيه صورة.
       default: "",
     },
+    // الهاشتاجات: مصفوفة من النصوص.
     tags: [
       {
         type: String,
@@ -73,20 +48,20 @@ const postSchema = new mongoose.Schema(
         lowercase: true,
       },
     ],
-    // قائمة الإعجابات (تحتوي على معرفات المستخدمين)
+    // اللايكات: مصفوفة فيها الـ IDs بتاعة اليوزرز اللي عملوا لايك.
     likes: [
       {
         type: mongoose.Schema.Types.ObjectId,
         ref: "User",
       },
     ],
-    // قائمة التعليقات
+    // الكومنتات: مصفوفة بتستخدم الـ commentSchema اللي عرفناه فوق.
     comments: [commentSchema],
   },
   { timestamps: true }
 );
 
-// إضافة فهرس نصي للبحث في محتوى المنشورات والوسوم
+// بنعمل "فهرس نصي" (Text Index) على المحتوى والهاشتاجات عشان البحث يكون سريع جداً.
 postSchema.index({ content: "text", tags: "text" });
 
 module.exports = mongoose.model("Post", postSchema);

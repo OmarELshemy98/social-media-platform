@@ -1,3 +1,9 @@
+/**
+ * @file profileValidators.js
+ * @description شروط صحة بيانات "البروفايل".
+ * بنتحقق إن الاسم والبايو مكتوبين صح ومعدوش الطول المسموح به لما اليوزر يجي يحدث بياناته.
+ */
+
 const { body } = require("express-validator");
 
 const updateProfileValidator = [

@@ -1,6 +1,8 @@
 /**
  * @file store.js
- * @description إعداد متجر Redux المركزي وتجميع جميع الـ Slices (أجزاء الحالة).
+ * @description الفايل ده هو "المخزن المركزي" (Redux Store).
+ * هنا بنجمع كل الـ Slices اللي عملناها (زي الحسابات، البوستات، الإشعارات).
+ * ده بيخلينا نقدر نوصل لأي معلومة في أي مكان في الموقع بسهولة من غير تعقيد.
  */
 
 import { configureStore } from "@reduxjs/toolkit";

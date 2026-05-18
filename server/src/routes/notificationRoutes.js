@@ -1,3 +1,9 @@
+/**
+ * @file notificationRoutes.js
+ * @description عناوين (Endpoints) الإشعارات.
+ * هنا بنحدد المسارات اللي بنجيب منها التنبيهات ونعلم عليها إنها اتقرأت.
+ */
+
 const express = require("express");
 const { protect } = require("../middlewares/authMiddleware");
 const {

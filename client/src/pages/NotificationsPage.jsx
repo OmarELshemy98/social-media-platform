@@ -1,3 +1,10 @@
+/**
+ * @file NotificationsPage.jsx
+ * @description صفحة "الإشعارات".
+ * هنا اليوزر بيشوف كل الحاجات اللي حصلت (حد عمل لايك، حد بعت طلب صداقة، إلخ).
+ * لما يدوس على أي إشعار، الموقع بيوديه فوراً للمكان الصح (مثلاً للبوست اللي اتعمل عليه لايك).
+ */
+
 import { useEffect } from "react";
 import { Button, Card, Badge, ListGroup } from "react-bootstrap";
 import { useDispatch, useSelector } from "react-redux";

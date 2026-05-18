@@ -1,6 +1,8 @@
 /**
  * @file authRoutes.js
- * @description تعريف مسارات المصادقة.
+ * @description الفايل ده بيحدد "عناوين المصادقة" (Auth Endpoints).
+ * بنربط فيه بين اللينك (URL) وبين الفانكشن اللي هتتنفذ من الـ Controller.
+ * زي مثلاً لينك الـ /register والـ /login.
  */
 
 const express = require("express");

@@ -1,13 +1,16 @@
 /**
  * @file SettingsPage.jsx
- * @description صفحة الإعدادات لإدارة الحساب، الحظر، وكلمة المرور.
+ * @description صفحة "الإعدادات" (Settings).
  */
 
 import { useEffect, useState } from "react";
+// مكونات React-Bootstrap.
 import { Container, Row, Col, Card, Form, Button, ListGroup, Badge, Alert, Modal } from "react-bootstrap";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
+// استيراد الـ API عشان نبعت طلبات مباشرة للسيرفر (زي تغيير الباسورد).
 import api from "../services/api";
+// أمر تسجيل الخروج.
 import { logout } from "../features/auth/authSlice";
 
 const SettingsPage = () => {
@@ -15,21 +18,25 @@ const SettingsPage = () => {
   const navigate = useNavigate();
   const { user } = useSelector((state) => state.auth);
 
-  // Password States
+  // States لتغيير كلمة السر.
   const [passwords, setPasswords] = useState({ current: "", next: "", confirm: "" });
   const [passMsg, setPassMsg] = useState({ type: "", text: "" });
 
-  // Blocked Users State
+  // قائمة المستخدمين المحظورين.
   const [blockedUsers, setBlockedUsers] = useState([]);
   
-  // Modal States
+  // States للتحكم في النوافذ المنبثقة (Modals) لتأكيد مسح الحساب.
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showDisableModal, setShowDisableModal] = useState(false);
 
+  // أول ما الصفحة تفتح بنجيب الناس اللي عملنا لهم بلوك.
   useEffect(() => {
     fetchBlockedUsers();
   }, []);
 
+  /**
+   * وظيفة جلب قائمة المحظورين من السيرفر
+   */
   const fetchBlockedUsers = async () => {
     try {
       const { data } = await api.get("/profiles/me/blocked-users");
@@ -39,27 +46,23 @@ const SettingsPage = () => {
     }
   };
 
-  const handleUnblock = async (userId) => {
-    try {
-      await api.post(`/profiles/${userId}/unblock`);
-      setBlockedUsers(blockedUsers.filter(u => u._id !== userId));
-    } catch (err) {
-      alert("Failed to unblock user");
-    }
-  };
-
+  /**
+   * وظيفة تغيير كلمة السر
+   */
   const handleUpdatePassword = async (e) => {
     e.preventDefault();
+    // بنشيك إن الباسورد الجديد هو نفسه التأكيد.
     if (passwords.next !== passwords.confirm) {
       return setPassMsg({ type: "danger", text: "New passwords do not match" });
     }
     try {
+      // بنبعت الباسورد القديم والجديد للسيرفر.
       await api.put("/profiles/me/update-password", {
         currentPassword: passwords.current,
         newPassword: passwords.next
       });
       setPassMsg({ type: "success", text: "Password updated successfully!" });
-      setPasswords({ current: "", next: "", confirm: "" });
+      setPasswords({ current: "", next: "", confirm: "" }); // بنصفر الفورم.
     } catch (err) {
       setPassMsg({ type: "danger", text: err.response?.data?.message || "Failed to update password" });
     }

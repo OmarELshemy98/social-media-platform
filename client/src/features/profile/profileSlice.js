@@ -1,27 +1,48 @@
-import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
-import api from "../../services/api";
+/**
+ * @file profileSlice.js
+ * @description الفايل ده مسؤول عن "بيانات البروفايل والعلاقات" في الـ Frontend.
+ */
 
+import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
+// استيراد الـ API اللي عملناه بـ Axios عشان نكلم السيرفر.
+import api from "../../services/api";
+// استيراد الأكشنز من postsSlice عشان نحدث بروفايل اليوزر لما يحصل تفاعل مع البوستات بتاعته.
+import { 
+  addCommentToPost, 
+  deletePost, 
+  toggleLikePost, 
+  optimisticToggleLike 
+} from "../posts/postsSlice";
+
+// الحالة الابتدائية لمخزن الملف الشخصي.
 const initialState = {
-  profileUser: null,
-  profilePosts: [],
-  suggestions: [],
-  relationship: "none", // 'none' | 'friends' | 'request_sent' | 'request_received' | 'blocked'
+  profileUser: null, // بيانات اليوزر صاحب البروفايل المعروض دلوقتي.
+  profilePosts: [], // المنشورات بتاعة البروفايل ده.
+  suggestions: [], // قائمة "ناس قد تعرفهم".
+  relationship: "none", // حالة العلاقة (none, friends, request_sent, request_received, blocked).
   status: "idle",
   error: null,
 };
 
+/**
+ * وظيفة (Thunk) لجلب بيانات ملف شخصي معين عن طريق الـ username.
+ */
 export const fetchProfileByUsername = createAsyncThunk(
   "profile/fetchByUsername",
   async (username, { rejectWithValue }) => {
     try {
+      // بنبعت طلب GET للسيرفر على مسار /profiles/:username.
       const { data } = await api.get(`/profiles/${username}`);
-      return data;
+      return data; // بنرجع بيانات اليوزر والبوستات والعلاقة.
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || "Failed to load profile");
     }
   }
 );
 
+/**
+ * وظيفة لإرسال طلب صداقة.
+ */
 export const sendFriendRequest = createAsyncThunk(
   "profile/sendFriendRequest",
   async (userId, { rejectWithValue }) => {
@@ -34,6 +55,9 @@ export const sendFriendRequest = createAsyncThunk(
   }
 );
 
+/**
+ * وظيفة لقبول طلب صداقة.
+ */
 export const acceptFriendRequest = createAsyncThunk(
   "profile/acceptFriendRequest",
   async (userId, { rejectWithValue }) => {
@@ -46,6 +70,9 @@ export const acceptFriendRequest = createAsyncThunk(
   }
 );
 
+/**
+ * وظيفة لإلغاء الصداقة.
+ */
 export const unfriendUser = createAsyncThunk(
   "profile/unfriendUser",
   async (userId, { rejectWithValue }) => {
@@ -58,6 +85,9 @@ export const unfriendUser = createAsyncThunk(
   }
 );
 
+/**
+ * وظيفة لحظر مستخدم.
+ */
 export const blockUser = createAsyncThunk(
   "profile/blockUser",
   async (userId, { rejectWithValue }) => {
@@ -70,6 +100,9 @@ export const blockUser = createAsyncThunk(
   }
 );
 
+/**
+ * وظيفة لجلب اقتراحات الأصدقاء.
+ */
 export const fetchSuggestions = createAsyncThunk(
   "profile/fetchSuggestions",
   async (_, { rejectWithValue }) => {
@@ -82,10 +115,14 @@ export const fetchSuggestions = createAsyncThunk(
   }
 );
 
+/**
+ * وظيفة لتحديث بيانات بروفايلي الشخصي.
+ */
 export const updateMyProfile = createAsyncThunk(
   "profile/updateMyProfile",
   async (payload, { rejectWithValue }) => {
     try {
+      // بنبعت طلب PUT للسيرفر فيه البيانات الجديدة (اسم، بايو، صور).
       const { data } = await api.put("/profiles/me/update", payload);
       return data.user;
     } catch (error) {
@@ -101,37 +138,74 @@ const profileSlice = createSlice({
   extraReducers: (builder) => {
     builder
       .addCase(fetchProfileByUsername.pending, (state) => {
-        state.status = "loading";
+        state.status = "loading"; // حالة التحميل لما الطلب يبدأ.
         state.error = null;
       })
       .addCase(fetchProfileByUsername.fulfilled, (state, action) => {
+        // لما بيانات البروفايل تيجي بنجاح.
         state.status = "succeeded";
         state.profileUser = action.payload.user;
         state.profilePosts = action.payload.posts;
         state.relationship = action.payload.relationship;
       })
       .addCase(fetchProfileByUsername.rejected, (state, action) => {
+        // لو الطلب فشل.
         state.status = "failed";
         state.error = action.payload;
       })
       .addCase(sendFriendRequest.fulfilled, (state) => {
+        // بنحدث حالة العلاقة فوراً لـ "طلب مرسل".
         state.relationship = "request_sent";
       })
       .addCase(acceptFriendRequest.fulfilled, (state) => {
+        // بنحدث حالة العلاقة لـ "أصدقاء".
         state.relationship = "friends";
       })
       .addCase(unfriendUser.fulfilled, (state) => {
+        // بنحدث حالة العلاقة لـ "لا يوجد".
         state.relationship = "none";
       })
       .addCase(blockUser.fulfilled, (state) => {
+        // بنحدث حالة العلاقة لـ "محظور".
         state.relationship = "blocked";
       })
       .addCase(fetchSuggestions.fulfilled, (state, action) => {
         state.suggestions = action.payload;
       })
       .addCase(updateMyProfile.fulfilled, (state, action) => {
+        // لما نحدث بياناتنا بنجاح، بنحدثها في الـ state.
         state.profileUser = action.payload;
-      });
+      })
+      .addCase(toggleLikePost.fulfilled, (state, action) => {
+        const post = state.profilePosts.find((item) => item._id === String(action.payload.postId));
+        if (post) {
+          post.likes = action.payload.likes; // تحديث نهائي من السيرفر
+        }
+      })
+      .addCase(addCommentToPost.fulfilled, (state, action) => {
+        const post = state.profilePosts.find((item) => item._id === action.payload.postId);
+        if (post) {
+          post.comments = action.payload.comments;
+        }
+      })
+      .addCase(deletePost.fulfilled, (state, action) => {
+        state.profilePosts = state.profilePosts.filter((item) => item._id !== action.payload);
+      })
+      // التعامل مع الأكشنز بتاعة البوستات عشان نحدث الـ profilePosts
+      .addMatcher(
+        (action) => action.type === optimisticToggleLike.type,
+        (state, action) => {
+          const { postId, userId } = action.payload;
+          const post = state.profilePosts.find((item) => item._id === postId);
+          if (!post) return;
+          const exists = post.likes.some((id) => String(id) === String(userId));
+          if (exists) {
+            post.likes = post.likes.filter((id) => String(id) !== String(userId));
+          } else {
+            post.likes.push(userId);
+          }
+        }
+      );
   },
 });
 

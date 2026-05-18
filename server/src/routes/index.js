@@ -1,33 +1,28 @@
 /**
  * @file index.js
- * @description تجميع جميع مسارات التطبيق في موجه (Router) واحد.
+ * @description الفايل ده هو "مجمع المسارات" (Routes Index).
+ * هنا بنجمع كل العناوين (Routes) بتاعة التطبيق في مكان واحد عشان نبعتها لملف الـ app.js.
  */
 
 const express = require("express");
-const authRoutes = require("./authRoutes");
-const postRoutes = require("./postRoutes");
-const profileRoutes = require("./profileRoutes");
-const notificationRoutes = require("./notificationRoutes");
-const searchRoutes = require("./searchRoutes");
-const messageRoutes = require("./messageRoutes");
-const uploadRoutes = require("./uploadRoutes");
-
 const router = express.Router();
 
-/**
- * اختبار حالة الخادم
- */
-router.get("/health", (req, res) => {
-  res.status(200).json({ status: "ok", service: "social-media-server" });
-});
+// استيراد ملفات المسارات الفرعية.
+const authRoutes = require("./authRoutes"); // مسارات الحسابات.
+const postRoutes = require("./postRoutes"); // مسارات البوستات.
+const profileRoutes = require("./profileRoutes"); // مسارات البروفايل.
+const messageRoutes = require("./messageRoutes"); // مسارات الشات.
+const notificationRoutes = require("./notificationRoutes"); // مسارات الإشعارات.
+const searchRoutes = require("./searchRoutes"); // مسارات البحث.
+const uploadRoutes = require("./uploadRoutes"); // مسارات رفع الصور.
 
-// تعريف المسارات الفرعية
-router.use("/auth", authRoutes); // مسارات المصادقة
-router.use("/posts", postRoutes); // مسارات المنشورات
-router.use("/profiles", profileRoutes); // مسارات الملفات الشخصية
-router.use("/notifications", notificationRoutes); // مسارات التنبيهات
-router.use("/search", searchRoutes); // مسارات البحث
-router.use("/messages", messageRoutes); // مسارات الرسائل
-router.use("/upload", uploadRoutes); // مسارات رفع الملفات
+// ربط كل مجموعة مسارات بالكلمة المفتاحية بتاعتها.
+router.use("/auth", authRoutes); // أي حاجة بتبدأ بـ /api/auth
+router.use("/posts", postRoutes); // أي حاجة بتبدأ بـ /api/posts
+router.use("/profiles", profileRoutes);
+router.use("/messages", messageRoutes);
+router.use("/notifications", notificationRoutes);
+router.use("/search", searchRoutes);
+router.use("/upload", uploadRoutes);
 
 module.exports = router;

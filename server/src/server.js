@@ -1,6 +1,9 @@
 /**
  * @file server.js
- * @description نقطة الدخول الرئيسية للخادم. يقوم بتشغيل الخادم والاتصال بقاعدة البيانات.
+ * @description دي "نقطة البداية" (Entry Point) بتاعة السيرفر.
+ * أول حاجة بنعملها هنا إننا بنحمل الإعدادات من ملف الـ .env.
+ * بعدين بننادي على الداتا بيز عشان نربط معاها.
+ * وفي الآخر بنشغل السيرفر ونخليه "يسمع" (Listen) لأي طلبات جاية على الـ Port المحدد (غالباً 5000).
  */
 
 require("dotenv").config(); // تحميل متغيرات البيئة من ملف .env
@@ -13,14 +16,22 @@ const PORT = process.env.PORT || 5000; // تحديد المنفذ (Port) الذ�
  * وظيفة لتشغيل الخادم بشكل غير متزامن
  */
 const startServer = async () => {
-  // الاتصال بقاعدة بيانات MongoDB
-  await connectDB();
+  try {
+    console.log("Starting server...");
+    // الاتصال بقاعدة بيانات MongoDB
+    console.log("Connecting to MongoDB...");
+    await connectDB();
 
-  // بدء الاستماع للطلبات على المنفذ المحدد
-  app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
-    console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
-  });
+    // بدء الاستماع للطلبات على المنفذ المحدد
+    app.listen(PORT, () => {
+      console.log(`🚀 Server running on port ${PORT}`);
+      console.log(`💻 Environment: ${process.env.NODE_ENV || 'development'}`);
+      console.log(`🔗 API URL: http://localhost:${PORT}/api`);
+    });
+  } catch (error) {
+    console.error(`❌ Failed to start server: ${error.message}`);
+    process.exit(1);
+  }
 };
 
 startServer();

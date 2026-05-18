@@ -1,6 +1,7 @@
 /**
  * @file PostDetailsPage.jsx
- * @description صفحة عرض تفاصيل منشور واحد.
+ * @description صفحة "تفاصيل البوست".
+ * دي الصفحة اللي بتفتح لما تدوس على بوست معين عشان تشوفه لوحده بكل الكومنتات اللي عليه وتتفاعل معاه براحتك.
  */
 
 import { useEffect, useState } from "react";

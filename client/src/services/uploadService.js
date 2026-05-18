@@ -1,3 +1,9 @@
+/**
+ * @file uploadService.js
+ * @description الفايل ده مسؤول عن "إرسال الملفات" للسيرفر.
+ * بياخد الصورة من اليوزر، يحطها في فورم (FormData)، ويبعتها للعنوان بتاع الـ upload في السيرفر، وبيرجع لنا رابط الصورة اللي اتسيفت.
+ */
+
 import api from "./api";
 
 export const uploadImage = async (file) => {
