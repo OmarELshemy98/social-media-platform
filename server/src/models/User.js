@@ -95,6 +95,11 @@ const userSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
+    // تاريخ آخر ظهور لليوزر
+    lastActive: {
+      type: Date,
+      default: Date.now,
+    },
     resetPasswordToken: String,
     resetPasswordExpire: Date,
   },

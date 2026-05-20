@@ -3,7 +3,7 @@
  * @description صفحة "المحادثات والرسائل" (The Chat System).
  */
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 // مكونات React-Bootstrap للتنسيق.
 import { Button, Card, Col, Form, Row } from "react-bootstrap";
 import { useDispatch, useSelector } from "react-redux";
@@ -27,19 +27,40 @@ const MessagesPage = () => {
   const { conversations, messages, activeConversationId } = useSelector((state) => state.messages);
   const { user } = useSelector((state) => state.auth);
 
+  // لتشغيل صوت الإشعارات
+  const playMessageSound = () => {
+    const audio = new Audio("https://assets.mixkit.co/active_storage/sfx/2354/2354-preview.mp3");
+    audio.play().catch(e => console.log("Audio play failed:", e));
+  };
+
   // أول ما الصفحة تفتح بنجيب كل المحادثات اللي اليوزر مشترك فيها.
   useEffect(() => {
     dispatch(fetchConversations());
   }, [dispatch]);
 
+  // مراقبة الرسايل الجديدة لتشغيل الصوت
+  const lastMessageCountRef = useRef(messages.length);
+  useEffect(() => {
+    if (messages.length > lastMessageCountRef.current) {
+      const lastMsg = messages[messages.length - 1];
+      // لو الرسالة جاية من حد تاني مش مني
+      if (lastMsg && String(lastMsg.sender?._id) !== String(user.id || user._id)) {
+        playMessageSound();
+      }
+    }
+    lastMessageCountRef.current = messages.length;
+  }, [messages, user.id, user._id]);
+
   // لو اليوزر فاتح محادثة معينة، بنعمل Polling (تحديث تلقائي) كل 8 ثواني عشان نجيب الرسايل الجديدة.
   useEffect(() => {
-    if (!activeConversationId) return undefined;
+    if (!activeConversationId || !user) return;
+
     const interval = setInterval(() => {
       dispatch(fetchConversationMessages(activeConversationId));
     }, 8000);
+
     return () => clearInterval(interval);
-  }, [dispatch, activeConversationId]);
+  }, [dispatch, activeConversationId, user]);
 
   // بنحسب بيانات المحادثة النشطة والشخص التاني اللي بنكلمه.
   const activeConversation = useMemo(
@@ -161,6 +182,16 @@ const MessagesPage = () => {
                         @{message.sender?.username}
                       </div>
                       <div className="chat-content">{message.content}</div>
+                      
+                      {String(message.sender?._id) === String(user.id || user._id) && (
+                        <div className="text-end mt-1" style={{ fontSize: '0.65rem', opacity: 0.7 }}>
+                          {message.isRead ? (
+                            <span className="text-info">Seen ✓✓</span>
+                          ) : (
+                            <span>Sent ✓</span>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </div>
                 ))

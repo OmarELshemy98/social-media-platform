@@ -4,7 +4,7 @@
  * دي الصفحة اللي بتفتح لما تدوس على بوست معين عشان تشوفه لوحده بكل الكومنتات اللي عليه وتتفاعل معاه براحتك.
  */
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Container, Row, Col, Spinner, Button, Card } from "react-bootstrap";
 import { useDispatch, useSelector } from "react-redux";
@@ -13,8 +13,7 @@ import PostCard from "../components/posts/PostCard";
 import { 
   addCommentToPost, 
   deletePost, 
-  optimisticToggleLike, 
-  toggleLikePost 
+  toggleReaction 
 } from "../features/posts/postsSlice";
 
 const PostDetailsPage = () => {
@@ -27,7 +26,7 @@ const PostDetailsPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  const fetchPost = async () => {
+  const fetchPost = useCallback(async () => {
     try {
       setLoading(true);
       const { data } = await api.get(`/posts/${postId}`);
@@ -38,21 +37,15 @@ const PostDetailsPage = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [postId]);
 
   useEffect(() => {
     fetchPost();
-  }, [postId]);
+  }, [fetchPost]);
 
-  const handleLike = async (id) => {
-    // We update local state for immediate feedback
-    const liked = post.likes.some(uid => String(id) === String(user.id || user._id));
-    const newLikes = liked 
-      ? post.likes.filter(uid => String(uid) !== String(user.id || user._id))
-      : [...post.likes, user.id || user._id];
-    
-    setPost({ ...post, likes: newLikes });
-    await dispatch(toggleLikePost(id));
+  const handleReaction = async (id, type) => {
+    await dispatch(toggleReaction({ postId: id, type }));
+    fetchPost();
   };
 
   if (loading) {

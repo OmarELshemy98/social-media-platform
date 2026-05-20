@@ -1,73 +1,88 @@
 /**
  * @file notificationsSlice.js
- * @description الفايل ده مسؤول عن "إدارة الإشعارات" في الـ Frontend.
+ * @description إدارة الإشعارات مع معالجة الأخطاء.
  */
 
 import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
-// استيراد الـ API اللي عملناه بـ Axios عشان نكلم السيرفر.
 import api from "../../services/api";
 
-// الحالة الابتدائية لمخزن الإشعارات.
 const initialState = {
-  notifications: [], // قائمة الإشعارات.
-  unreadCount: 0, // عدد الإشعارات اللي لسه ماتقرأتش.
+  notifications: [],
+  unreadCount: 0,
   status: "idle",
+  error: null,
 };
 
-/**
- * وظيفة (Thunk) لجلب كل الإشعارات من السيرفر.
- */
-export const fetchNotifications = createAsyncThunk("notifications/fetch", async () => {
-  const { data } = await api.get("/notifications");
-  return data;
-});
-
-/**
- * وظيفة لتعليم إشعار معين إنه اتقرأ.
- */
-export const markNotificationRead = createAsyncThunk(
-  "notifications/markRead",
-  async (notificationId) => {
-    // بنبعت طلب PATCH للسيرفر عشان يحدث حالة الإشعار.
-    await api.patch(`/notifications/${notificationId}/read`);
-    return notificationId;
+export const fetchNotifications = createAsyncThunk(
+  "notifications/fetch", 
+  async (_, { rejectWithValue }) => {
+    try {
+      const { data } = await api.get("/notifications");
+      return data || { notifications: [], unreadCount: 0 };
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || "Failed to load notifications");
+    }
   }
 );
 
-/**
- * وظيفة لتعليم "كل الإشعارات" إنها اتقرأت مرة واحدة.
- */
-export const markAllNotificationsRead = createAsyncThunk("notifications/markAllRead", async () => {
-  await api.patch("/notifications/read-all");
-});
+export const markNotificationRead = createAsyncThunk(
+  "notifications/markRead",
+  async (notificationId, { rejectWithValue }) => {
+    try {
+      await api.patch(`/notifications/${notificationId}/read`);
+      return notificationId;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || "Failed to mark notification as read");
+    }
+  }
+);
+
+export const markAllNotificationsRead = createAsyncThunk(
+  "notifications/markAllRead", 
+  async (_, { rejectWithValue }) => {
+    try {
+      await api.patch("/notifications/read-all");
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || "Failed to mark all as read");
+    }
+  }
+);
 
 const notificationsSlice = createSlice({
   name: "notifications",
   initialState,
-  reducers: {},
+  reducers: {
+    clearNotificationsError: (state) => {
+      state.error = null;
+    }
+  },
   extraReducers: (builder) => {
     builder
       .addCase(fetchNotifications.fulfilled, (state, action) => {
-        // لما الإشعارات تيجي، بنحدث القائمة والعدد.
-        state.notifications = action.payload.notifications;
-        state.unreadCount = action.payload.unreadCount;
+        state.notifications = action.payload.notifications || [];
+        state.unreadCount = action.payload.unreadCount || 0;
         state.status = "succeeded";
       })
       .addCase(markNotificationRead.fulfilled, (state, action) => {
-        // بنحدث حالة الإشعار في الـ state فوراً بعد نجاح الطلب.
         const item = state.notifications.find((n) => n._id === action.payload);
         if (item && !item.isRead) {
           item.isRead = true;
-          // بنقلل عدد الإشعارات غير المقروءة بمقدار 1.
           state.unreadCount = Math.max(0, state.unreadCount - 1);
         }
       })
       .addCase(markAllNotificationsRead.fulfilled, (state) => {
-        // بنعلم على كل اللي في القائمة كـ مقروء.
         state.notifications = state.notifications.map((item) => ({ ...item, isRead: true }));
         state.unreadCount = 0;
-      });
+      })
+      .addMatcher(
+        (action) => action.type.endsWith("/rejected"),
+        (state, action) => {
+          state.status = "failed";
+          state.error = action.payload;
+        }
+      );
   },
 });
 
+export const { clearNotificationsError } = notificationsSlice.actions;
 export default notificationsSlice.reducer;

@@ -13,25 +13,36 @@ const initialState = {
   messages: [], // الرسايل بتاعة المحادثة اللي مفتوحة دلوقتي.
   activeConversationId: null, // الـ ID بتاع المحادثة اللي اليوزر فاتحها دلوقتي.
   status: "idle", // حالة التحميل.
+  error: null,
 };
 
 /**
  * وظيفة (Thunk) لجلب كل المحادثات من السيرفر.
  */
-export const fetchConversations = createAsyncThunk("messages/fetchConversations", async () => {
-  const { data } = await api.get("/messages/conversations");
-  return data.conversations;
-});
+export const fetchConversations = createAsyncThunk(
+  "messages/fetchConversations", 
+  async (_, { rejectWithValue }) => {
+    try {
+      const { data } = await api.get("/messages/conversations");
+      return data.conversations || [];
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || "Failed to fetch conversations");
+    }
+  }
+);
 
 /**
  * وظيفة لجلب رسايل محادثة معينة.
  */
 export const fetchConversationMessages = createAsyncThunk(
   "messages/fetchConversationMessages",
-  async (conversationId) => {
-    const { data } = await api.get(`/messages/conversations/${conversationId}/messages`);
-    // بنرجع الـ ID والرسايل عشان الـ Redux يعرف يحدث أنهي محادثة.
-    return { conversationId, messages: data.messages };
+  async (conversationId, { rejectWithValue }) => {
+    try {
+      const { data } = await api.get(`/messages/conversations/${conversationId}/messages`);
+      return { conversationId, messages: data.messages || [] };
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || "Failed to fetch messages");
+    }
   }
 );
 
@@ -40,9 +51,13 @@ export const fetchConversationMessages = createAsyncThunk(
  */
 export const sendMessage = createAsyncThunk(
   "messages/sendMessage",
-  async ({ receiverId, content }) => {
-    const { data } = await api.post("/messages", { receiverId, content });
-    return data;
+  async ({ receiverId, content }, { rejectWithValue }) => {
+    try {
+      const { data } = await api.post("/messages", { receiverId, content });
+      return data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || "Failed to send message");
+    }
   }
 );
 
@@ -51,9 +66,28 @@ export const sendMessage = createAsyncThunk(
  */
 export const startConversationWithUser = createAsyncThunk(
   "messages/startConversation",
-  async (username) => {
-    const { data } = await api.post("/messages/conversations/start", { username });
-    return data.conversation;
+  async (username, { rejectWithValue }) => {
+    try {
+      const { data } = await api.post("/messages/conversations/start", { username });
+      return data.conversation;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || "Failed to start conversation");
+    }
+  }
+);
+
+/**
+ * وظيفة لتحديد الرسايل كـ "مقروءة" (Seen).
+ */
+export const markMessagesAsRead = createAsyncThunk(
+  "messages/markMessagesAsRead",
+  async (conversationId, { rejectWithValue }) => {
+    try {
+      await api.put(`/messages/conversations/${conversationId}/read`);
+      return { conversationId };
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || "Failed to mark as read");
+    }
   }
 );
 
@@ -61,35 +95,47 @@ const messagesSlice = createSlice({
   name: "messages",
   initialState,
   reducers: {
-    // وظيفة عادية (Action) عشان نغير المحادثة النشطة يدوياً.
     setActiveConversation: (state, action) => {
       state.activeConversationId = action.payload;
     },
+    clearMessagesError: (state) => {
+      state.error = null;
+    }
   },
   extraReducers: (builder) => {
-    // هنا بنتعامل مع نتائج الـ AsyncThunks (العمليات اللي بتكلم السيرفر).
     builder
       .addCase(fetchConversations.fulfilled, (state, action) => {
-        state.conversations = action.payload; // لما المحادثات تيجي، بنسيفها في الـ state.
+        state.conversations = action.payload;
+        state.status = "succeeded";
       })
       .addCase(fetchConversationMessages.fulfilled, (state, action) => {
         state.activeConversationId = action.payload.conversationId;
         state.messages = action.payload.messages;
+        state.status = "succeeded";
       })
       .addCase(sendMessage.fulfilled, (state, action) => {
-        // لما نبعت رسالة وتنجح، بنضيفها فوراً لقائمة الرسايل المعروضة.
-        state.messages.push(action.payload.message);
+        if (action.payload?.message) {
+          state.messages.push(action.payload.message);
+        }
       })
       .addCase(startConversationWithUser.fulfilled, (state, action) => {
-        // لما نبدأ محادثة جديدة، بنشيك لو هي مش موجودة في القائمة، بنضيفها في الأول (unshift).
-        const exists = state.conversations.find(c => c._id === action.payload._id);
-        if (!exists) {
-          state.conversations.unshift(action.payload);
+        if (action.payload?._id) {
+          const exists = state.conversations.find(c => c._id === action.payload._id);
+          if (!exists) {
+            state.conversations.unshift(action.payload);
+          }
+          state.activeConversationId = action.payload._id;
         }
-        state.activeConversationId = action.payload._id;
-      });
+      })
+      .addMatcher(
+        (action) => action.type.endsWith("/rejected"),
+        (state, action) => {
+          state.status = "failed";
+          state.error = action.payload;
+        }
+      );
   },
 });
 
-export const { setActiveConversation } = messagesSlice.actions;
+export const { setActiveConversation, clearMessagesError } = messagesSlice.actions;
 export default messagesSlice.reducer;

@@ -10,8 +10,7 @@ import api from "../../services/api";
 import { 
   addCommentToPost, 
   deletePost, 
-  toggleLikePost, 
-  optimisticToggleLike 
+  toggleReaction
 } from "../posts/postsSlice";
 
 // الحالة الابتدائية لمخزن الملف الشخصي.
@@ -176,36 +175,21 @@ const profileSlice = createSlice({
         // لما نحدث بياناتنا بنجاح، بنحدثها في الـ state.
         state.profileUser = action.payload;
       })
-      .addCase(toggleLikePost.fulfilled, (state, action) => {
-        const post = state.profilePosts.find((item) => item._id === String(action.payload.postId));
+      .addCase(toggleReaction.fulfilled, (state, action) => {
+        const post = state.profilePosts.find((item) => item._id === action.payload.postId);
         if (post) {
-          post.likes = action.payload.likes; // تحديث نهائي من السيرفر
+          post.reactions = action.payload.reactions;
         }
       })
       .addCase(addCommentToPost.fulfilled, (state, action) => {
         const post = state.profilePosts.find((item) => item._id === action.payload.postId);
         if (post) {
-          post.comments = action.payload.comments;
+          post.comments = action.payload.post.comments;
         }
       })
       .addCase(deletePost.fulfilled, (state, action) => {
         state.profilePosts = state.profilePosts.filter((item) => item._id !== action.payload);
-      })
-      // التعامل مع الأكشنز بتاعة البوستات عشان نحدث الـ profilePosts
-      .addMatcher(
-        (action) => action.type === optimisticToggleLike.type,
-        (state, action) => {
-          const { postId, userId } = action.payload;
-          const post = state.profilePosts.find((item) => item._id === postId);
-          if (!post) return;
-          const exists = post.likes.some((id) => String(id) === String(userId));
-          if (exists) {
-            post.likes = post.likes.filter((id) => String(id) !== String(userId));
-          } else {
-            post.likes.push(userId);
-          }
-        }
-      );
+      });
   },
 });
 

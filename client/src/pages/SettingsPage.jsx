@@ -29,11 +29,6 @@ const SettingsPage = () => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showDisableModal, setShowDisableModal] = useState(false);
 
-  // أول ما الصفحة تفتح بنجيب الناس اللي عملنا لهم بلوك.
-  useEffect(() => {
-    fetchBlockedUsers();
-  }, []);
-
   /**
    * وظيفة جلب قائمة المحظورين من السيرفر
    */
@@ -43,6 +38,23 @@ const SettingsPage = () => {
       setBlockedUsers(data.blockedUsers);
     } catch (err) {
       console.error("Failed to fetch blocked users");
+    }
+  };
+
+  // أول ما الصفحة تفتح بنجيب الناس اللي عملنا لهم بلوك.
+  useEffect(() => {
+    fetchBlockedUsers();
+  }, []);
+
+  /**
+   * وظيفة فك الحظر عن يوزر
+   */
+  const handleUnblock = async (userId) => {
+    try {
+      await api.post(`/profiles/${userId}/unblock`);
+      fetchBlockedUsers(); // تحديث القائمة بعد فك الحظر.
+    } catch (err) {
+      console.error("Failed to unblock user");
     }
   };
 

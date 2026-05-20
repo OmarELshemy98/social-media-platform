@@ -19,6 +19,10 @@ const commentSchema = new mongoose.Schema(
       trim: true,
       maxlength: 500,
     },
+    isEdited: {
+      type: Boolean,
+      default: false,
+    },
   },
   { timestamps: true } // بنسيف وقت كتابة الكومنت.
 );
@@ -40,15 +44,22 @@ const postSchema = new mongoose.Schema(
       type: String, // لو البوست فيه صورة.
       default: "",
     },
-    // الهاشتاجات: مصفوفة من النصوص.
-    tags: [
+    // التفاعلات: مصفوفة كائنات تحتوي على اليوزر ونوع التفاعل (Like, Love, Sad, Angry)
+    reactions: [
       {
-        type: String,
-        trim: true,
-        lowercase: true,
+        user: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "User",
+          required: true,
+        },
+        type: {
+          type: String,
+          enum: ["like", "love", "sad", "angry"],
+          default: "like",
+        },
       },
     ],
-    // اللايكات: مصفوفة فيها الـ IDs بتاعة اليوزرز اللي عملوا لايك.
+    // بنسيب الـ likes القديمة عشان ميعملش مشاكل دلوقتي
     likes: [
       {
         type: mongoose.Schema.Types.ObjectId,

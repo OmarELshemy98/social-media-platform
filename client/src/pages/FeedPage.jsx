@@ -18,8 +18,7 @@ import { Link } from "react-router-dom";
 import { 
   fetchFeedPosts, 
   createPost, 
-  optimisticToggleLike, 
-  toggleLikePost,
+  toggleReaction,
   addCommentToPost,
   deletePost
 } from "../features/posts/postsSlice";
@@ -28,6 +27,7 @@ import { fetchSuggestions } from "../features/profile/profileSlice";
 // استيراد المكونات الصغيرة اللي بنبني بيها الصفحة.
 import PostCard from "../components/posts/PostCard";
 import PostComposer from "../components/posts/PostComposer";
+import StoriesSection from "../components/layout/StoriesSection";
 
 const FeedPage = () => {
   const dispatch = useDispatch();
@@ -46,34 +46,11 @@ const FeedPage = () => {
     dispatch(fetchSuggestions());
   }, [dispatch]);
 
-  /**
-   * وظيفة التعامل مع اللايك
-   */
-  const handleLike = async (postId) => {
-    // بنستخدم Optimistic UI: بنغير شكل القلب فوراً عند اليوزر قبل ما السيرفر يرد عشان يحس إن الموقع سريع.
-    dispatch(optimisticToggleLike({ postId, userId: user.id || user._id }));
-    // وبنبعت الطلب الحقيقي للسيرفر في الخلفية.
-    await dispatch(toggleLikePost(postId));
-  };
-
-  return (
-    <Row className="g-4">
-      <Col xs={12} lg={8}>
-        <PostComposer onCreate={(payload) => dispatch(createPost(payload))} />
-        {error && <Alert variant="danger" className="my-3">{error}</Alert>}
-        {status === "loading" && posts.length === 0 ? (
-          <div className="text-center py-5">
-            <Spinner animation="border" variant="primary" />
-            <p className="text-muted mt-2">Loading your feed...</p>
-          </div>
-        ) : (
-          <div className="posts-container">
             {posts.map((post) => (
               <PostCard
                 key={post._id}
                 post={post}
                 currentUserId={user?.id || user?._id}
-                onLike={handleLike}
                 onComment={(postId, content) => dispatch(addCommentToPost({ postId, content }))}
                 onDelete={(postId) => dispatch(deletePost(postId))}
               />

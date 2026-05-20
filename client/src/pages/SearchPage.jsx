@@ -16,8 +16,7 @@ import PostCard from "../components/posts/PostCard";
 import { 
   addCommentToPost, 
   deletePost, 
-  optimisticToggleLike, 
-  toggleLikePost 
+  toggleReaction
 } from "../features/posts/postsSlice";
 
 const SearchPage = () => {
@@ -27,14 +26,6 @@ const SearchPage = () => {
   // سحب نتائج البحث وحالة التحميل.
   const { users, posts, status } = useSelector((state) => state.search);
   const { user: currentUser } = useSelector((state) => state.auth);
-
-  /**
-   * وظيفة التعامل مع اللايك
-   */
-  const handleLike = async (postId) => {
-    dispatch(optimisticToggleLike({ postId, userId: currentUser.id || currentUser._id }));
-    await dispatch(toggleLikePost(postId));
-  };
 
   /**
    * وظيفة تنفيذ البحث لما اليوزر يدوس Enter أو زرار البحث
@@ -137,7 +128,6 @@ const SearchPage = () => {
                     key={p._id} 
                     post={p} 
                     currentUserId={currentUser?.id || currentUser?._id}
-                    onLike={handleLike}
                     onComment={(postId, content) => dispatch(addCommentToPost({ postId, content }))}
                     onDelete={(postId) => dispatch(deletePost(postId))}
                   />

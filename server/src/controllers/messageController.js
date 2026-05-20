@@ -97,6 +97,16 @@ const getMessagesByConversation = async (req, res, next) => {
       .populate("receiver", "name username avatarUrl")
       .sort({ createdAt: 1 });
 
+    // تحديث الرسايل اللي انا استلمتها كـ "مقروءة" (Seen)
+    await Message.updateMany(
+      { 
+        conversation: conversation._id, 
+        receiver: req.user._id, 
+        isRead: false 
+      },
+      { isRead: true }
+    );
+
     return res.status(200).json({ messages });
   } catch (error) {
     return next(error);
@@ -146,9 +156,32 @@ const sendMessage = async (req, res, next) => {
   }
 };
 
+/**
+ * وظيفة لتحديد الرسايل كـ "مقروءة" (Seen) يدوياً
+ */
+const markMessagesAsRead = async (req, res, next) => {
+  try {
+    const { conversationId } = req.params;
+    
+    await Message.updateMany(
+      { 
+        conversation: conversationId, 
+        receiver: req.user._id, 
+        isRead: false 
+      },
+      { isRead: true }
+    );
+
+    return res.status(200).json({ message: "Messages marked as read" });
+  } catch (error) {
+    return next(error);
+  }
+};
+
 module.exports = { 
   startConversationByUsername, 
   getMyConversations, 
   getMessagesByConversation, 
-  sendMessage 
+  sendMessage,
+  markMessagesAsRead
 };

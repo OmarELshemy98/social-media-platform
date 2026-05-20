@@ -1,8 +1,6 @@
 /**
  * @file postRoutes.js
  * @description الفايل ده بيحدد "عناوين المنشورات" (Post Endpoints).
- * هنا بنحدد اللينكات اللي بنستخدمها عشان نكريت بوست، نعمل لايك، أو نكتب كومنت.
- * كل المسارات هنا محمية بـ protect، يعني لازم اليوزر يكون مسجل دخول.
  */
 
 const express = require("express");
@@ -14,9 +12,10 @@ const {
   getSinglePost,
   updatePost,
   deletePost,
-  toggleLikePost,
+  toggleReaction,
   addComment,
-  addReplyToComment,
+  updateComment,
+  deleteComment,
 } = require("../controllers/postController");
 const {
   postCreateValidator,
@@ -26,21 +25,18 @@ const {
 
 const router = express.Router();
 
-// جميع مسارات المنشورات تتطلب تسجيل دخول
 router.use(protect);
 
-router.get("/", getFeedPosts); // جلب المنشورات
-router.post("/", postCreateValidator, validateRequest, createPost); // إنشاء منشور
-router.get("/:postId", getSinglePost); // جلب منشور محدد
-router.put("/:postId", postUpdateValidator, validateRequest, updatePost); // تحديث منشور
-router.delete("/:postId", deletePost); // حذف منشور
-router.patch("/:postId/like", toggleLikePost); // إعجاب أو إلغاء إعجاب
-router.post("/:postId/comments", commentValidator, validateRequest, addComment); // إضافة تعليق
-router.post(
-  "/:postId/comments/:commentId/replies",
-  commentValidator,
-  validateRequest,
-  addReplyToComment
-); // الرد على تعليق
+router.get("/", getFeedPosts);
+router.post("/", postCreateValidator, validateRequest, createPost);
+router.get("/:postId", getSinglePost);
+router.put("/:postId", postUpdateValidator, validateRequest, updatePost);
+router.delete("/:postId", deletePost);
+
+// التفاعلات والتعليقات
+router.patch("/:postId/reaction", toggleReaction);
+router.post("/:postId/comments", commentValidator, validateRequest, addComment);
+router.put("/:postId/comments/:commentId", commentValidator, validateRequest, updateComment);
+router.delete("/:postId/comments/:commentId", deleteComment);
 
 module.exports = router;

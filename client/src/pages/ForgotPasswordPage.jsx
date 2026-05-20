@@ -24,6 +24,7 @@ const ForgotPasswordPage = () => {
   // بيانات الباسورد الجديد
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [resetToken, setResetToken] = useState(null);
 
   const [loading, setLoading] = useState(false);
@@ -77,65 +78,71 @@ const ForgotPasswordPage = () => {
     <Container className="auth-page py-5">
       <Row className="justify-content-center w-100 m-0">
         <Col xs={12} sm={10} md={8} lg={5} xl={4}>
-          <Card className="auth-card border-0 shadow-lg">
+          <Card className="auth-card border-0 shadow-lg" style={{ borderRadius: '2rem' }}>
             <Card.Body className="p-4 p-sm-5">
-              <div className="text-center mb-4">
-                <h2 className="fw-bold text-primary mb-2">SocialSphere</h2>
-                <h4 className="text-muted">
+              <div className="text-center mb-5">
+                <h1 className="fw-800 text-primary mb-2" style={{ letterSpacing: '-2px' }}>SocialSphere</h1>
+                <h4 className="fw-bold">
                   {step === 1 ? "Verify Identity" : "New Password"}
                 </h4>
-                <p className="small text-muted">
+                <p className="text-muted small">
                   {step === 1 
-                    ? "Enter your account details to continue" 
-                    : "Create a strong password for your account"}
+                    ? "Confirm your account details" 
+                    : "Create a strong new password"}
                 </p>
               </div>
 
-              {error && <Alert variant="danger" className="py-2 small">{error}</Alert>}
-              {success && <Alert variant="success" className="py-2 small">{success}</Alert>}
+              {error && <Alert variant="danger" className="py-2 small border-0 rounded-3">{error}</Alert>}
+              {success && <Alert variant="success" className="py-2 small border-0 rounded-3">{success}</Alert>}
 
               {step === 1 && !success && (
                 <Form onSubmit={handleVerify}>
                   <Form.Group className="mb-3">
-                    <Form.Label className="small fw-semibold">Email Address</Form.Label>
+                    <Form.Label className="small fw-bold ms-2">Email Address</Form.Label>
                     <Form.Control
                       type="email"
                       required
                       placeholder="name@example.com"
+                      className="py-3 px-4 rounded-4 bg-light border-0 shadow-none"
+                      style={{ fontSize: '0.9rem' }}
                       value={verifyData.email}
                       onChange={(e) => setVerifyData({ ...verifyData, email: e.target.value })}
                     />
                   </Form.Group>
 
                   <Form.Group className="mb-3">
-                    <Form.Label className="small fw-semibold">Username</Form.Label>
+                    <Form.Label className="small fw-bold ms-2">Username</Form.Label>
                     <Form.Control
                       type="text"
                       required
                       placeholder="@username"
+                      className="py-3 px-4 rounded-4 bg-light border-0 shadow-none"
+                      style={{ fontSize: '0.9rem' }}
                       value={verifyData.username}
                       onChange={(e) => setVerifyData({ ...verifyData, username: e.target.value })}
                     />
                   </Form.Group>
 
                   <Form.Group className="mb-4">
-                    <Form.Label className="small fw-semibold">Phone Number</Form.Label>
+                    <Form.Label className="small fw-bold ms-2">Phone Number</Form.Label>
                     <Form.Control
                       type="tel"
                       required
                       placeholder="+20..."
+                      className="py-3 px-4 rounded-4 bg-light border-0 shadow-none"
+                      style={{ fontSize: '0.9rem' }}
                       value={verifyData.phoneNumber}
                       onChange={(e) => setVerifyData({ ...verifyData, phoneNumber: e.target.value })}
                     />
                   </Form.Group>
 
                   <Button 
-                    className="w-100 py-2 fw-bold" 
+                    className="w-100 py-3 fw-bold rounded-4 shadow-sm mt-2" 
                     type="submit" 
                     variant="primary"
                     disabled={loading}
                   >
-                    {loading ? <Spinner size="sm" className="me-2" /> : "Verify Details"}
+                    {loading ? <Spinner size="sm" className="me-2" /> : "Verify Identity"}
                   </Button>
                 </Form>
               )}
@@ -143,30 +150,43 @@ const ForgotPasswordPage = () => {
               {step === 2 && !success && (
                 <Form onSubmit={handleReset}>
                   <Form.Group className="mb-3">
-                    <Form.Label className="small fw-semibold">New Password</Form.Label>
-                    <Form.Control
-                      type="password"
-                      required
-                      minLength={6}
-                      placeholder="Min. 6 characters"
-                      value={newPassword}
-                      onChange={(e) => setNewPassword(e.target.value)}
-                    />
+                    <Form.Label className="small fw-bold ms-2">New Password</Form.Label>
+                    <div className="position-relative">
+                      <Form.Control
+                        type={showPassword ? "text" : "password"}
+                        required
+                        minLength={6}
+                        placeholder="••••••••"
+                        className="py-3 px-4 rounded-4 bg-light border-0 shadow-none"
+                        style={{ fontSize: '0.9rem', paddingRight: '3.5rem' }}
+                        value={newPassword}
+                        onChange={(e) => setNewPassword(e.target.value)}
+                      />
+                      <div 
+                        className="position-absolute top-50 end-0 translate-middle-y me-3 cursor-pointer text-muted"
+                        onClick={() => setShowPassword(!showPassword)}
+                        style={{ cursor: 'pointer', zIndex: 10 }}
+                      >
+                        {showPassword ? "👁️" : "👁️‍🗨️"}
+                      </div>
+                    </div>
                   </Form.Group>
 
                   <Form.Group className="mb-4">
-                    <Form.Label className="small fw-semibold">Confirm Password</Form.Label>
+                    <Form.Label className="small fw-bold ms-2">Confirm Password</Form.Label>
                     <Form.Control
                       type="password"
                       required
-                      placeholder="Repeat password"
+                      placeholder="••••••••"
+                      className="py-3 px-4 rounded-4 bg-light border-0 shadow-none"
+                      style={{ fontSize: '0.9rem' }}
                       value={confirmPassword}
                       onChange={(e) => setConfirmPassword(e.target.value)}
                     />
                   </Form.Group>
 
                   <Button 
-                    className="w-100 py-2 fw-bold" 
+                    className="w-100 py-3 fw-bold rounded-4 shadow-sm mt-2" 
                     type="submit" 
                     variant="primary"
                     disabled={loading}
@@ -176,10 +196,10 @@ const ForgotPasswordPage = () => {
                 </Form>
               )}
 
-              <div className="text-center mt-4">
-                <p className="small mb-0">
-                  Remembered? <Link to="/login" className="fw-bold text-decoration-none">Back to Login</Link>
-                </p>
+              <div className="text-center mt-5">
+                <Link to="/login" className="small fw-bold text-primary text-decoration-none">
+                  ← Back to Login
+                </Link>
               </div>
             </Card.Body>
           </Card>

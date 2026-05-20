@@ -9,17 +9,16 @@ import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
 import api from "../../services/api";
 
 // بنجيب بيانات اليوزر والتوكن من الـ LocalStorage لو اليوزر كان فاتح الموقع قبل كده.
-// الـ LocalStorage هي "ذاكرة المتصفح" اللي مش بتتمسح لما تقفل الصفحة.
 const persistedToken = localStorage.getItem("token");
 const persistedUser = localStorage.getItem("user");
 
 // الحالة الابتدائية (Initial State) لمخزن المصادقة.
 const initialState = {
-  user: persistedUser ? JSON.parse(persistedUser) : null, // اليوزر لو متخزن بنحوله من JSON لكائن (Object).
-  token: persistedToken || null, // التوكن.
-  isAuthenticated: Boolean(persistedToken), // هل اليوزر مسجل دخول؟ (True لو في توكن).
-  status: "idle", // حالة التحميل.
-  error: null, // لو حصل غلط في التسجيل أو الدخول.
+  user: persistedUser ? JSON.parse(persistedUser) : null,
+  token: persistedToken || null,
+  isAuthenticated: Boolean(persistedToken),
+  status: "idle",
+  error: null,
 };
 
 /**
@@ -29,11 +28,9 @@ export const registerUser = createAsyncThunk(
   "auth/registerUser",
   async (payload, { rejectWithValue }) => {
     try {
-      // بنبعت بيانات اليوزر للسيرفر على مسار /auth/register.
       const { data } = await api.post("/auth/register", payload);
-      return data; // بنرجع البيانات اللي جات من السيرفر.
+      return data;
     } catch (error) {
-      // لو حصل غلط (مثلاً الإيميل موجود)، بنرجع رسالة الغلط اللي السيرفر بعتها.
       return rejectWithValue(
         error.response?.data?.errors || error.response?.data?.message || "Registration failed"
       );
@@ -48,7 +45,6 @@ export const loginUser = createAsyncThunk(
   "auth/loginUser",
   async (payload, { rejectWithValue }) => {
     try {
-      // بنبعت الإيميل والباسورد للسيرفر.
       const { data } = await api.post("/auth/login", payload);
       return data;
     } catch (error) {
@@ -77,7 +73,7 @@ export const forgotPassword = createAsyncThunk(
   async (payload, { rejectWithValue }) => {
     try {
       const { data } = await api.post("/auth/forgot-password", payload);
-      return data; // نرجع الـ data كاملة (بما فيها الـ resetToken)
+      return data;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || "Failed to verify details");
     }
@@ -100,24 +96,20 @@ const authSlice = createSlice({
   name: "auth",
   initialState,
   reducers: {
-    // تسجيل الخروج ومسح البيانات
     logout: (state) => {
       state.user = null;
       state.token = null;
       state.isAuthenticated = false;
-      state.status = "idle";
-      state.error = null;
       localStorage.removeItem("token");
       localStorage.removeItem("user");
     },
-    // مسح رسائل الخطأ
     clearAuthError: (state) => {
       state.error = null;
     },
   },
   extraReducers: (builder) => {
     builder
-      // معالجة حالات التسجيل
+      // Register
       .addCase(registerUser.pending, (state) => {
         state.status = "loading";
         state.error = null;
@@ -134,7 +126,7 @@ const authSlice = createSlice({
         state.status = "failed";
         state.error = action.payload;
       })
-      // معالجة حالات تسجيل الدخول
+      // Login
       .addCase(loginUser.pending, (state) => {
         state.status = "loading";
         state.error = null;
@@ -151,6 +143,7 @@ const authSlice = createSlice({
         state.status = "failed";
         state.error = action.payload;
       })
+      // Me
       .addCase(fetchCurrentUser.fulfilled, (state, action) => {
         state.user = action.payload;
         state.isAuthenticated = true;

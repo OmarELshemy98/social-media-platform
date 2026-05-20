@@ -5,61 +5,231 @@
  */
 
 :root {
-  /* متغيرات الألوان للوضع الفاتح */
-  --bg: #f6f8fb;
+  /* Clean Pearl Luxury Palette - Light Mode */
+  --bg: #f8fafc;
   --surface: #ffffff;
-  --text: #1c2434;
-  --muted: #697589;
-  --border: #d8dfeb;
-  --shadow: 0 10px 30px rgba(26, 39, 73, 0.08);
+  --primary: #4f46e5; /* Indigo 600 */
+  --primary-hover: #4338ca; /* Indigo 700 */
+  --text: #0f172a; /* Slate 900 */
+  --text-secondary: #475569; /* Slate 600 */
+  --muted: #94a3b8; /* Slate 400 */
+  --border: #e2e8f0; /* Slate 200 */
+  --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  --accent: #eef2ff; /* Indigo 50 */
+  --glass: rgba(255, 255, 255, 0.8);
 }
 
 [data-theme="dark"] {
-  /* متغيرات الألوان للوضع الداكن */
-  --bg: #111827;
-  --surface: #1f2937;
-  --text: #e5e7eb;
-  --muted: #9ca3af;
-  --border: #374151;
-  --shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+  /* Modern Slate Luxury Palette - Dark Mode */
+  --bg: #0f172a; /* Slate 950 */
+  --surface: #1e293b; /* Slate 800 */
+  --primary: #6366f1; /* Indigo 500 */
+  --primary-hover: #818cf8; /* Indigo 400 */
+  --text: #f8fafc; /* Slate 50 */
+  --text-secondary: #cbd5e1; /* Slate 300 */
+  --muted: #64748b; /* Slate 500 */
+  --border: #334155; /* Slate 700 */
+  --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
+  --shadow-lg: 0 20px 25px -5px rgba(0, 0, 0, 0.4), 0 10px 10px -5px rgba(0, 0, 0, 0.3);
+  --accent: #1e1b4b; /* Indigo 950 */
+  --glass: rgba(30, 41, 59, 0.8);
 }
 
 * {
   box-sizing: border-box;
+  transition: background-color 0.4s cubic-bezier(0.4, 0, 0.2, 1), 
+              color 0.4s cubic-bezier(0.4, 0, 0.2, 1), 
+              border-color 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+              box-shadow 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 body {
   margin: 0;
   background: var(--bg);
   color: var(--text);
-  font-family: "Inter", "Segoe UI", sans-serif;
+  font-family: 'Plus Jakarta Sans', 'Inter', system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  line-height: 1.6;
 }
 
-a {
-  text-decoration: none;
+/* Typography Enhancements */
+h1, h2, h3, h4, h5, h6 {
+  color: var(--text);
+  font-weight: 700;
+  letter-spacing: -0.025em;
 }
 
-/* تنسيقات الهيكل العام والبطاقات */
-.app-shell {
-  min-height: 100vh;
+.text-muted {
+  color: var(--text-secondary) !important;
+}
+
+/* Luxury Components Style */
+.dashboard-nav {
+  background: var(--glass);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  padding: 0.75rem 0;
+}
+
+/* Fix Nav Link Colors for Luxury Look */
+.navbar-brand, .nav-link {
+  color: var(--text) !important;
+  font-weight: 700 !important;
+  transition: all 0.3s ease;
+  opacity: 0.8;
+  letter-spacing: -0.01em;
+}
+
+.nav-link:hover {
+  color: var(--primary) !important;
+  opacity: 1;
+  transform: translateY(-1px);
+}
+
+.nav-link.active {
+  color: var(--primary) !important;
+  opacity: 1;
+  background: var(--accent) !important;
+  border-radius: 2rem;
+}
+
+/* Luxury Card Styling */
+.dashboard-card, .auth-card, .card {
+  background: var(--surface) !important;
+  color: var(--text) !important;
+  border: 1px solid var(--border) !important;
+  box-shadow: var(--shadow) !important;
+  border-radius: 1.5rem !important;
+  padding: 1.5rem;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.user-nav-pill {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.25rem 1rem 0.25rem 0.25rem;
+  border-radius: 2rem;
+  background: var(--accent);
+  border: 1px solid var(--border);
+  color: var(--text);
+  margin-right: 0.5rem;
+}
+
+.card-title, .card-text, .modal-title, .modal-body, .form-label, .dropdown-item {
+  color: var(--text) !important;
+}
+
+.dropdown-menu {
+  background-color: var(--surface) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 1rem !important;
+  box-shadow: var(--shadow-lg) !important;
+}
+
+.dropdown-item:hover {
+  background-color: var(--accent) !important;
+}
+
+.dashboard-card:hover {
+  box-shadow: var(--shadow-lg) !important;
+  transform: translateY(-2px);
+}
+
+.dashboard-card:hover {
+  box-shadow: var(--shadow-lg);
+}
+
+/* Buttons Transformation */
+.btn {
+  border-radius: 0.75rem;
+  padding: 0.6rem 1.25rem;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.btn-primary {
+  background: var(--primary) !important;
+  border: none !important;
+  box-shadow: 0 4px 14px 0 rgba(79, 70, 229, 0.39);
+}
+
+/* Form Controls Luxury */
+.form-control, .form-select {
+  background-color: var(--bg) !important;
+  color: var(--text) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 0.75rem !important;
+  padding: 0.75rem 1rem !important;
+  transition: all 0.2s ease !important;
+}
+
+.form-control:focus {
+  background-color: var(--surface) !important;
+  border-color: var(--primary) !important;
+  box-shadow: 0 0 0 4px var(--accent) !important;
+}
+
+.form-control::placeholder {
+  color: var(--muted) !important;
+  opacity: 0.7;
+}
+
+/* Badge Luxury */
+.badge {
+  padding: 0.5em 1em !important;
+  border-radius: 2rem !important;
+  font-weight: 600 !important;
+}
+
+/* Messages & Chat Luxury Style */
+.messages-box {
   background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 1.25rem;
+  padding: 1.25rem;
 }
 
-.dashboard-nav,
-.dashboard-card,
-.auth-card {
+.chat-bubble {
+  padding: 0.8rem 1.1rem;
+  border-radius: 1.25rem;
+  font-weight: 500;
+}
+
+.chat-bubble--mine {
+  background: var(--primary);
+  color: #ffffff;
+  border-bottom-right-radius: 0.25rem;
+}
+
+.chat-bubble--other {
   background: var(--surface);
   border: 1px solid var(--border);
-  box-shadow: var(--shadow);
-  border-radius: 1rem;
+  color: var(--text);
+  border-bottom-left-radius: 0.25rem;
 }
 
-.dashboard-nav {
-  margin: 1rem;
+/* Scrollbar Luxury Customization */
+::-webkit-scrollbar {
+  width: 6px;
 }
 
-.dashboard-card {
-  margin-bottom: 1rem;
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 20px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--muted);
 }
 
 /* صفحة المصادقة */
@@ -137,8 +307,41 @@ a {
   border: 1px solid var(--border);
 }
 
-.chat-author {
-  font-size: 0.78rem;
-  opacity: 0.8;
-  margin-bottom: 0.15rem;
+.comment-input-wrapper {
+  display: flex;
+  gap: 0.5rem;
+  background: var(--bg);
+  padding: 0.5rem;
+  border-radius: 2rem;
+  border: 1px solid var(--border);
+}
+
+.comment-item {
+  padding: 1rem;
+  margin-bottom: 0.75rem;
+  border-radius: 1.25rem;
+  background: var(--accent);
+  border: 1px solid var(--border);
+  transition: var(--transition);
+}
+
+.comment-item:hover {
+  transform: translateX(4px);
+}
+
+/* Modal Luxury Styling */
+.modal-content {
+  background-color: var(--surface) !important;
+  color: var(--text) !important;
+  border: none !important;
+  border-radius: 1.5rem !important;
+  box-shadow: var(--shadow-lg) !important;
+}
+
+.modal-header {
+  border-bottom: 1px solid var(--border) !important;
+}
+
+.modal-footer {
+  border-top: 1px solid var(--border) !important;
 }

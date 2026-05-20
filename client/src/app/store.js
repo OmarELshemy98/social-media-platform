@@ -13,6 +13,7 @@ import profileReducer from "../features/profile/profileSlice"; // إدارة ب�
 import notificationsReducer from "../features/notifications/notificationsSlice"; // إدارة التنبيهات
 import searchReducer from "../features/search/searchSlice"; // إدارة عمليات البحث
 import messagesReducer from "../features/messages/messagesSlice"; // إدارة الرسائل الخاصة
+import storiesReducer from "../features/stories/storiesSlice"; // إدارة الستوري
 
 export const store = configureStore({
   reducer: {
@@ -24,5 +25,6 @@ export const store = configureStore({
     notifications: notificationsReducer,
     search: searchReducer,
     messages: messagesReducer,
+    stories: storiesReducer,
   },
 });

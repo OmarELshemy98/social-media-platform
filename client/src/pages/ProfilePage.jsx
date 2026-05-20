@@ -1,18 +1,14 @@
 /**
  * @file ProfilePage.jsx
- * @description صفحة "الملف الشخصي" (The Profile).
- * دي الصفحة اللي بتعرض بيانات اليوزر (صورته، البايو، الأصدقاء، والبوستات بتاعته).
+ * @description صفحة الملف الشخصي مع معرض الوسائط والتحسينات البصرية.
  */
 
 import { useEffect, useState } from "react";
-// مكونات React-Bootstrap للتنسيق السريع والجميل.
-import { Button, Card, Form, Row, Col, Nav, Tab, Modal } from "react-bootstrap";
-// Hooks من Redux عشان نكلم المخزن ونبعت أوامر.
+import { Button, Card, Form, Row, Col, Nav, Tab, Modal, Spinner } from "react-bootstrap";
 import { useDispatch, useSelector } from "react-redux";
-// Hooks من React Router للتنقل وقراءة الـ Parameters من الرابط.
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, Link } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
 
-// استيراد الأوامر (Actions) من السلايسات المختلفة.
 import { 
   fetchProfileByUsername, 
   updateMyProfile,
@@ -29,447 +25,245 @@ import {
 import { 
   addCommentToPost, 
   deletePost, 
-  optimisticToggleLike, 
-  toggleLikePost 
+  toggleReaction 
 } from "../features/posts/postsSlice";
 
-// خدمة رفع الصور.
 import { uploadImage } from "../services/uploadService";
-// مكونات عرض البوستات.
 import PostCard from "../components/posts/PostCard";
+import { formatLastActive, isOnline } from "../utils/timeUtils";
 
 const ProfilePage = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  // بنجيب الـ username من الرابط (مثلاً: /profile/ahmed).
   const { username } = useParams();
   
-  // بنسحب بيانات اليوزر الحالي والبروفايل المعروض من الـ Redux.
   const { user: currentUser } = useSelector((state) => state.auth);
-  const { profileUser, profilePosts, relationship } = useSelector((state) => state.profile);
-  const { messages, activeConversationId } = useSelector((state) => state.messages);
+  const { profileUser, profilePosts, relationship, status: profileStatus } = useSelector((state) => state.profile);
+  const { messages } = useSelector((state) => state.messages);
   
-  // States محلية لإدارة "تعديل البروفايل".
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState({ name: "", bio: "", avatarUrl: "", coverUrl: "" });
-  const [avatarFile, setAvatarFile] = useState(null);
-  const [coverFile, setCoverFile] = useState(null);
   const [isUploading, setIsUploading] = useState(false);
-
-  // States لإدارة "نافذة الشات السريع" (Popup Chat).
   const [showChatModal, setShowNewChatModal] = useState(false);
   const [chatDraft, setChatDraft] = useState("");
 
-  // بنحدد هل ده بروفايلي أنا ولا بروفايل حد تاني؟
   const targetUsername = username || currentUser?.username;
   const isOwner = targetUsername === currentUser?.username;
 
-  // بنجيب بيانات البروفايل أول ما الصفحة تفتح أو لما الـ username يتغير.
   useEffect(() => {
     if (targetUsername) dispatch(fetchProfileByUsername(targetUsername));
   }, [dispatch, targetUsername]);
 
-  /**
-   * وظيفة فتح الشات السريع مع صاحب البروفايل
-   */
-  const handleMessageClick = async () => {
-    if (profileUser?.username) {
-      // بنبدأ محادثة وبنجيب الرسايل القديمة.
-      const result = await dispatch(startConversationWithUser(profileUser.username)).unwrap();
-      await dispatch(fetchConversationMessages(result._id));
-      setShowNewChatModal(true); // بنفتح النافذة.
+  const handleUpdateProfile = async (e) => {
+    e.preventDefault();
+    if (!isOwner) return;
+    setIsUploading(true);
+    try {
+      await dispatch(updateMyProfile(form)).unwrap();
+      setEditing(false);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsUploading(false);
     }
   };
 
-  const handleSendQuickMessage = async (e) => {
-    e.preventDefault();
-    if (!chatDraft.trim() || !profileUser?._id) return;
-    await dispatch(sendMessage({ receiverId: profileUser._id, content: chatDraft.trim() }));
-    setChatDraft("");
+  const handleImageUpload = async (e, type) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setIsUploading(true);
+    try {
+      const url = await uploadImage(file);
+      setForm(prev => ({ ...prev, [type]: url }));
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsUploading(false);
+    }
   };
 
-  /**
-   * وظيفة التعامل مع اللايك (الإعجاب) بالبوست
-   */
-  const handleLike = async (postId) => {
-    // بنستخدم Optimistic UI عشان نحسن تجربة المستخدم
-    dispatch(optimisticToggleLike({ postId, userId: currentUser?.id || currentUser?._id }));
-    // وبنبعت الطلب الحقيقي للسيرفر
-    await dispatch(toggleLikePost(postId));
-  };
+  // تصفية البوستات اللي فيها ميديا فقط للمعرض
+  const mediaPosts = profilePosts.filter(post => post.imageUrl);
 
   return (
-    <div className="profile-page pb-5">
+    <motion.div 
+      initial={{ opacity: 0 }} 
+      animate={{ opacity: 1 }} 
+      className="profile-page pb-5"
+    >
       {/* Quick Chat Modal */}
-      <Modal 
-        show={showChatModal} 
-        onHide={() => setShowNewChatModal(false)}
-        centered
-        size="md"
-        className="quick-chat-modal"
-      >
-        <Modal.Header closeButton className="border-0 pb-0">
-          <Modal.Title className="fs-5 fw-bold">
-            Chat with @{profileUser?.username}
-          </Modal.Title>
+      <Modal show={showChatModal} onHide={() => setShowNewChatModal(false)} centered>
+        <Modal.Header closeButton className="border-0">
+          <Modal.Title className="fs-5 fw-bold">Chat with @{profileUser?.username}</Modal.Title>
         </Modal.Header>
-        <Modal.Body className="pt-2">
-          <div 
-            className="quick-messages-box mb-3 overflow-auto" 
-            style={{ height: '350px', padding: '10px', background: '#f8f9fa', borderRadius: '12px' }}
-          >
-            {messages.length === 0 ? (
-              <div className="h-100 d-flex align-items-center justify-content-center text-muted small">
-                No messages yet. Say hi!
-              </div>
-            ) : (
-              messages.map((m) => (
-                <div 
-                  key={m._id} 
-                  className={`chat-bubble-row ${String(m.sender?._id) === String(currentUser.id || currentUser._id) ? 'chat-bubble-row--mine' : ''}`}
-                >
-                  <div className={`chat-bubble ${String(m.sender?._id) === String(currentUser.id || currentUser._id) ? 'chat-bubble--mine' : 'chat-bubble--other'}`}>
-                    {m.content}
-                  </div>
+        <Modal.Body>
+          <div className="messages-box mb-3 overflow-auto" style={{ height: '300px' }}>
+            {messages.map((m) => (
+              <div key={m._id} className={`chat-bubble-row ${String(m.sender?._id) === String(currentUser.id || currentUser._id) ? 'chat-bubble-row--mine' : ''}`}>
+                <div className={`chat-bubble ${String(m.sender?._id) === String(currentUser.id || currentUser._id) ? 'chat-bubble--mine' : 'chat-bubble--other'}`}>
+                  {m.content}
                 </div>
-              ))
-            )}
+              </div>
+            ))}
           </div>
-          <Form onSubmit={handleSendQuickMessage}>
+          <Form onSubmit={async (e) => {
+            e.preventDefault();
+            if (!chatDraft.trim()) return;
+            await dispatch(sendMessage({ receiverId: profileUser._id, content: chatDraft }));
+            setChatDraft("");
+          }}>
             <div className="d-flex gap-2">
-              <Form.Control 
-                placeholder="Type a message..."
-                className="rounded-pill px-3"
-                value={chatDraft}
-                onChange={(e) => setChatDraft(e.target.value)}
-              />
-              <Button type="submit" variant="primary" className="rounded-pill px-4">Send</Button>
+              <Form.Control className="rounded-pill" value={chatDraft} onChange={(e) => setChatDraft(e.target.value)} placeholder="Type..." />
+              <Button type="submit" variant="primary" className="rounded-pill">Send</Button>
             </div>
           </Form>
         </Modal.Body>
       </Modal>
-      {/* Profile Header Card */}
-      <Card className="dashboard-card border-0 shadow-sm overflow-hidden mb-4">
+
+      {/* Profile Header */}
+      <Card className="dashboard-card border-0 shadow-sm overflow-hidden mb-4 p-0">
         <div 
-          className="profile-cover" 
+          className="profile-cover position-relative" 
           style={{ 
-            height: '220px', 
-            backgroundImage: profileUser?.coverUrl ? `url(${profileUser.coverUrl})` : 'linear-gradient(45deg, #0d6efd, #6610f2)',
-            backgroundSize: 'cover',
-            backgroundPosition: 'center',
-            position: 'relative'
+            height: '250px', 
+            background: profileUser?.coverUrl ? `url(${profileUser.coverUrl}) center/cover` : 'linear-gradient(45deg, #4f46e5, #818cf8)'
           }}
-        ></div>
-        <Card.Body className="px-4 pt-0">
+        >
+          {editing && (
+            <label className="btn btn-dark btn-sm position-absolute bottom-0 end-0 m-3 rounded-pill opacity-75">
+              Change Cover
+              <input type="file" className="d-none" onChange={(e) => handleImageUpload(e, 'coverUrl')} />
+            </label>
+          )}
+        </div>
+        <Card.Body className="px-4 pb-4">
           <Row>
             <Col xs={12} md={4} lg={3} className="text-center text-md-start">
-              <div 
-                className="profile-avatar-wrapper shadow"
-                style={{ 
-                  marginTop: '-75px',
-                  display: 'inline-block',
-                  padding: '5px',
-                  background: 'var(--surface)',
-                  borderRadius: '50%',
-                  position: 'relative',
-                  zIndex: 10
-                }}
-              >
-                <img 
-                  src={profileUser?.avatarUrl || "https://via.placeholder.com/150"} 
-                  alt="avatar" 
-                  className="rounded-circle"
-                  style={{ 
-                    width: '150px', 
-                    height: '150px', 
-                    objectFit: 'cover',
-                  }}
-                />
+              <div className="profile-avatar-wrapper shadow-lg" style={{ marginTop: '-80px', background: 'var(--surface)', padding: '5px', borderRadius: '50%', display: 'inline-block' }}>
+                <img src={form.avatarUrl || profileUser?.avatarUrl || "https://via.placeholder.com/150"} className="rounded-circle object-fit-cover" style={{ width: '150px', height: '150px' }} />
+                {editing && (
+                  <label className="btn btn-primary btn-sm position-absolute bottom-0 end-0 rounded-circle p-2 shadow">
+                    📷
+                    <input type="file" className="d-none" onChange={(e) => handleImageUpload(e, 'avatarUrl')} />
+                  </label>
+                )}
               </div>
             </Col>
             <Col xs={12} md={8} lg={9} className="pt-3">
               <div className="d-flex flex-column flex-md-row justify-content-between align-items-center align-items-md-start">
-                <div className="text-center text-md-start mb-3 mb-md-0">
-                  <h2 className="fw-bold mb-1">{profileUser?.name}</h2>
-                  <p className="text-muted fs-5 mb-2">@{profileUser?.username}</p>
-                  <div className="d-flex gap-4 justify-content-center justify-content-md-start mb-3">
-                    <div className="text-center">
-                      <span className="fw-bold d-block">{profilePosts.length}</span>
-                      <span className="small text-muted">Posts</span>
-                    </div>
-                    <div className="text-center">
-                      <span className="fw-bold d-block">{profileUser?.friends?.length || 0}</span>
-                      <span className="small text-muted">Friends</span>
-                    </div>
+                <div>
+                  <div className="d-flex align-items-center gap-2 mb-1">
+                    <h2 className="fw-bold mb-0">{profileUser?.name}</h2>
+                    {!isOwner && <span className={`badge rounded-pill ${isOnline(profileUser?.lastActive) ? 'bg-success' : 'bg-secondary'}`} style={{ fontSize: '0.6rem' }}>{isOnline(profileUser?.lastActive) ? 'Online' : 'Offline'}</span>}
                   </div>
+                  <p className="text-muted fw-bold mb-1">@{profileUser?.username}</p>
+                  <p className="small text-muted mb-3">{profileUser?.bio || "No bio yet."}</p>
                 </div>
-                
-                <div className="d-flex gap-2 mt-3 mt-sm-0">
+                <div className="d-flex gap-2">
                   {isOwner ? (
-                    <Button
-                      variant={editing ? "outline-secondary" : "primary"}
-                      className="rounded-pill px-4 fw-bold"
-                      disabled={isUploading}
-                      onClick={() => {
-                        if (!editing && profileUser) {
-                          setForm({
-                            name: profileUser.name || "",
-                            bio: profileUser.bio || "",
-                            avatarUrl: profileUser.avatarUrl || "",
-                            coverUrl: profileUser.coverUrl || "",
-                          });
-                        }
-                        setEditing((prev) => !prev);
-                      }}
-                    >
+                    <Button variant={editing ? "outline-secondary" : "primary"} className="rounded-pill px-4 fw-bold" onClick={() => {
+                      if (!editing) setForm({ name: profileUser.name, bio: profileUser.bio, avatarUrl: profileUser.avatarUrl, coverUrl: profileUser.coverUrl });
+                      setEditing(!editing);
+                    }}>
                       {editing ? "Cancel" : "Edit Profile"}
                     </Button>
                   ) : (
-                    <>
-                      {relationship === "friends" && (
-                        <div className="d-flex gap-2">
-                          <Button 
-                            variant="success" 
-                            className="rounded-pill px-4 fw-bold" 
-                            disabled 
-                          >
-                            ✓ Friends
-                          </Button>
-                          <Button 
-                            variant="outline-primary" 
-                            className="rounded-pill px-4 fw-bold"
-                            onClick={handleMessageClick}
-                          >
-                            Message
-                          </Button>
-                          <Button 
-                            variant="outline-danger" 
-                            className="rounded-pill px-4 fw-bold"
-                            onClick={() => dispatch(unfriendUser(profileUser._id))}
-                          >
-                            Unfriend
-                          </Button>
-                        </div>
-                      )}
-                      {relationship === "request_sent" && (
-                        <Button variant="secondary" className="rounded-pill px-4 fw-bold" disabled>
-                          Request Sent
-                        </Button>
-                      )}
-                      {relationship === "request_received" && (
-                        <Button 
-                          variant="primary" 
-                          className="rounded-pill px-4 fw-bold"
-                          onClick={() => dispatch(acceptFriendRequest(profileUser._id))}
-                        >
-                          Accept Request
-                        </Button>
-                      )}
-                      {relationship === "none" && (
-                        <Button 
-                          variant="primary" 
-                          className="rounded-pill px-4 fw-bold"
-                          onClick={() => dispatch(sendFriendRequest(profileUser._id))}
-                        >
-                          Add Friend
-                        </Button>
-                      )}
-                      {relationship !== "blocked" && (
-                        <Button 
-                          variant="outline-dark" 
-                          className="rounded-pill px-4 fw-bold"
-                          onClick={() => dispatch(blockUser(profileUser._id))}
-                        >
-                          Block
-                        </Button>
-                      )}
-                      {relationship === "blocked" && (
-                        <Button variant="danger" className="rounded-pill px-4 fw-bold" disabled>
-                          Blocked
-                        </Button>
-                      )}
-                    </>
+                    <Button variant="primary" className="rounded-pill px-4 fw-bold" onClick={() => setShowNewChatModal(true)}>Message</Button>
                   )}
                 </div>
               </div>
             </Col>
           </Row>
 
-          <div className="mt-4 mb-2">
-            <h5 className="fw-bold small text-uppercase text-muted mb-2">About</h5>
-            <p className="lead fs-6">
-              {profileUser?.bio || (isOwner ? "Add a bio to express yourself!" : "This user hasn't added a bio yet.")}
-            </p>
-          </div>
-
-          {isOwner && editing && (
-            <Form
-              className="mt-4 p-4 border rounded-3 bg-light shadow-sm"
-              onSubmit={(e) => {
-                e.preventDefault();
-                const submit = async () => {
-                  try {
-                    setIsUploading(true);
-                    let avatarUrl = form.avatarUrl;
-                    let coverUrl = form.coverUrl;
-
-                    if (avatarFile) {
-                      avatarUrl = await uploadImage(avatarFile);
-                    }
-                    if (coverFile) {
-                      coverUrl = await uploadImage(coverFile);
-                    }
-
-                    await dispatch(updateMyProfile({ ...form, avatarUrl, coverUrl })).unwrap();
-                    setEditing(false);
-                    dispatch(fetchProfileByUsername(targetUsername));
-                    setAvatarFile(null);
-                    setCoverFile(null);
-                  } catch (err) {
-                    console.error("Upload failed:", err);
-                    alert("Failed to update profile. Please try again.");
-                  } finally {
-                    setIsUploading(false);
-                  }
-                };
-                submit();
-              }}
-            >
-              <h5 className="fw-bold mb-4">Update Profile</h5>
-              <Row className="g-3">
-                <Col xs={12} md={6}>
-                  <Form.Group>
-                    <Form.Label className="small fw-bold">Display Name</Form.Label>
-                    <Form.Control
-                      value={form.name}
-                      onChange={(e) => setForm({ ...form, name: e.target.value })}
-                      placeholder="Your name"
-                    />
-                  </Form.Group>
-                </Col>
-                <Col xs={12} md={6}>
-                  <Form.Group>
-                    <Form.Label className="small fw-bold">Avatar URL</Form.Label>
-                    <Form.Control
-                      value={form.avatarUrl}
-                      onChange={(e) => setForm({ ...form, avatarUrl: e.target.value })}
-                      placeholder="https://..."
-                    />
-                  </Form.Group>
-                </Col>
-                <Col xs={12} md={6}>
-                  <Form.Group>
-                    <Form.Label className="small fw-bold">Cover URL</Form.Label>
-                    <Form.Control
-                      value={form.coverUrl}
-                      onChange={(e) => setForm({ ...form, coverUrl: e.target.value })}
-                      placeholder="https://..."
-                    />
-                  </Form.Group>
-                </Col>
-                <Col xs={12}>
-                  <Form.Group>
-                    <Form.Label className="small fw-bold">Bio</Form.Label>
-                    <Form.Control
-                      as="textarea"
-                      rows={3}
-                      value={form.bio}
-                      onChange={(e) => setForm({ ...form, bio: e.target.value })}
-                      placeholder="Tell the world about yourself..."
-                    />
-                  </Form.Group>
-                </Col>
-                <Col xs={12} md={6}>
-                  <Form.Group>
-                    <Form.Label className="small fw-bold">Change Profile Picture</Form.Label>
-                    <Form.Control
-                      type="file"
-                      accept="image/*"
-                      onChange={(e) => setAvatarFile(e.target.files?.[0] || null)}
-                    />
-                  </Form.Group>
-                </Col>
-                <Col xs={12} md={6}>
-                  <Form.Group>
-                    <Form.Label className="small fw-bold">Change Cover Photo</Form.Label>
-                    <Form.Control
-                      type="file"
-                      accept="image/*"
-                      onChange={(e) => setCoverFile(e.target.files?.[0] || null)}
-                    />
-                  </Form.Group>
-                </Col>
-              </Row>
-              <div className="mt-4 d-grid">
-                <Button 
-                  type="submit" 
-                  variant="primary" 
-                  size="lg" 
-                  className="rounded-pill fw-bold"
-                  disabled={isUploading}
-                >
-                  {isUploading ? "Saving Changes..." : "Save All Changes"}
-                </Button>
-              </div>
-            </Form>
+          {editing && (
+            <motion.div initial={{ height: 0 }} animate={{ height: 'auto' }} className="mt-4 border-top pt-4">
+              <Form onSubmit={handleUpdateProfile}>
+                <Row className="g-3">
+                  <Col md={6}><Form.Group><Form.Label className="small fw-bold">Full Name</Form.Label><Form.Control value={form.name} onChange={e => setForm({...form, name: e.target.value})} className="rounded-3" /></Form.Group></Col>
+                  <Col md={12}><Form.Group><Form.Label className="small fw-bold">Bio</Form.Label><Form.Control as="textarea" rows={2} value={form.bio} onChange={e => setForm({...form, bio: e.target.value})} className="rounded-3" /></Form.Group></Col>
+                  <Col md={12}><Button type="submit" disabled={isUploading} className="w-100 rounded-pill fw-bold py-2">{isUploading ? <Spinner size="sm" /> : "Save Changes"}</Button></Col>
+                </Row>
+              </Form>
+            </motion.div>
           )}
         </Card.Body>
       </Card>
 
       {/* Profile Content Tabs */}
       <Tab.Container defaultActiveKey="posts">
-        <Nav variant="tabs" className="mb-4 border-bottom-0 justify-content-center justify-content-md-start px-2">
-          <Nav.Item>
-            <Nav.Link eventKey="posts" className="px-4 fw-bold">Posts</Nav.Link>
-          </Nav.Item>
-          <Nav.Item>
-            <Nav.Link eventKey="media" className="px-4 fw-bold">Media</Nav.Link>
-          </Nav.Item>
+        <Nav variant="pills" className="justify-content-center gap-2 mb-4">
+          <Nav.Item><Nav.Link eventKey="posts" className="rounded-pill px-4 fw-bold">Posts</Nav.Link></Nav.Item>
+          <Nav.Item><Nav.Link eventKey="media" className="rounded-pill px-4 fw-bold">Media Gallery</Nav.Link></Nav.Item>
+          <Nav.Item><Nav.Link eventKey="friends" className="rounded-pill px-4 fw-bold">Friends</Nav.Link></Nav.Item>
         </Nav>
 
         <Tab.Content>
           <Tab.Pane eventKey="posts">
-            <Row>
-              <Col xs={12} lg={8}>
+            <Row className="justify-content-center">
+              <Col md={8}>
                 {profilePosts.length === 0 ? (
-                  <Card className="dashboard-card border-0 shadow-sm text-center py-5">
-                    <Card.Body>
-                      <h4 className="text-muted">No posts yet</h4>
-                      <p className="mb-0">When {isOwner ? 'you share' : `@${profileUser?.username} shares`} posts, they will appear here.</p>
-                    </Card.Body>
-                  </Card>
+                  <div className="text-center py-5 text-muted">No posts yet.</div>
                 ) : (
-                  profilePosts.map((post) => (
-                    <PostCard
-                      key={post._id}
-                      post={post}
-                      currentUserId={currentUser?.id || currentUser?._id}
-                      onLike={handleLike}
-                      onComment={(postId, content) => dispatch(addCommentToPost({ postId, content }))}
-                      onDelete={(postId) => dispatch(deletePost(postId))}
+                  profilePosts.map(post => (
+                    <PostCard 
+                      key={post._id} 
+                      post={post} 
+                      currentUserId={currentUser?._id || currentUser?.id}
+                      onComment={(pid, content) => dispatch(addCommentToPost({ postId: pid, content }))}
+                      onDelete={(pid) => window.confirm("Delete?") && dispatch(deletePost(pid))}
                     />
                   ))
                 )}
               </Col>
-              <Col lg={4} className="d-none d-lg-block">
-                <Card className="dashboard-card border-0 shadow-sm">
-                  <Card.Body>
-                    <h6 className="fw-bold mb-3">You might like</h6>
-                    <p className="small text-muted">Discover more people to follow on the Search page.</p>
-                    <Button variant="outline-primary" size="sm" className="w-100 rounded-pill">Find People</Button>
-                  </Card.Body>
-                </Card>
-              </Col>
             </Row>
           </Tab.Pane>
+
           <Tab.Pane eventKey="media">
-            <div className="text-center py-5 bg-white rounded shadow-sm">
-              <h5 className="text-muted">Media Gallery coming soon!</h5>
-            </div>
+            <Row className="g-3">
+              {mediaPosts.length === 0 ? (
+                <Col className="text-center py-5 text-muted">No media found.</Col>
+              ) : (
+                mediaPosts.map((post) => (
+                  <Col key={post._id} xs={6} md={4} lg={3}>
+                    <motion.div 
+                      whileHover={{ scale: 1.05 }} 
+                      className="rounded-4 overflow-hidden shadow-sm border h-100 bg-surface"
+                      style={{ aspectRatio: '1/1', cursor: 'pointer' }}
+                    >
+                      <img src={post.imageUrl} className="w-100 h-100 object-fit-cover" alt="media" />
+                    </motion.div>
+                  </Col>
+                ))
+              )}
+            </Row>
+          </Tab.Pane>
+
+          <Tab.Pane eventKey="friends">
+            <Card className="dashboard-card border-0 shadow-sm">
+              <Card.Body>
+                <Row className="g-3">
+                  {profileUser?.friends?.length === 0 ? (
+                    <Col className="text-center py-4 text-muted">No friends yet.</Col>
+                  ) : (
+                    profileUser?.friends?.map(friend => (
+                      <Col key={friend._id} md={6}>
+                        <div className="d-flex align-items-center gap-3 p-3 rounded-4 bg-light border">
+                          <img src={friend.avatarUrl || "https://via.placeholder.com/50"} className="rounded-circle" style={{ width: '50px', height: '50px' }} />
+                          <div>
+                            <Link to={`/profile/${friend.username}`} className="fw-bold text-decoration-none text-dark d-block">@{friend.username}</Link>
+                            <small className="text-muted">{friend.name}</small>
+                          </div>
+                        </div>
+                      </Col>
+                    ))
+                  )}
+                </Row>
+              </Card.Body>
+            </Card>
           </Tab.Pane>
         </Tab.Content>
       </Tab.Container>
-    </div>
+    </motion.div>
   );
 };
 

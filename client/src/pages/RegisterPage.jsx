@@ -22,6 +22,7 @@ const RegisterPage = () => {
     phoneNumber: "",
     password: "",
   });
+  const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
     if (isAuthenticated) navigate("/");
@@ -38,16 +39,16 @@ const RegisterPage = () => {
     <Container className="auth-page py-5">
       <Row className="justify-content-center w-100 m-0">
         <Col xs={12} sm={10} md={8} lg={6} xl={5}>
-          <Card className="auth-card border-0 shadow-lg">
+          <Card className="auth-card border-0 shadow-lg" style={{ borderRadius: '2rem' }}>
             <Card.Body className="p-4 p-sm-5">
-              <div className="text-center mb-4">
-                <h2 className="fw-bold text-primary mb-2">SocialSphere</h2>
-                <h4 className="text-muted">Create Account</h4>
-                <p className="small">Join our community today</p>
+              <div className="text-center mb-5">
+                <h1 className="fw-800 text-primary mb-2" style={{ letterSpacing: '-2px' }}>SocialSphere</h1>
+                <h4 className="fw-bold">Create Account</h4>
+                <p className="text-muted small">Join our exclusive community today</p>
               </div>
 
               {error && (
-                <Alert variant="danger" className="py-2 small">
+                <Alert variant="danger" className="py-2 small border-0 rounded-3">
                   {Array.isArray(error) ? (
                     <ul className="mb-0 ps-3">
                       {error.map((err, index) => (
@@ -61,24 +62,28 @@ const RegisterPage = () => {
               )}
 
               <Form onSubmit={handleSubmit}>
-                <Row>
+                <Row className="g-3">
                   <Col md={6}>
-                    <Form.Group className="mb-2">
-                      <Form.Label className="small fw-semibold">Full Name</Form.Label>
+                    <Form.Group>
+                      <Form.Label className="small fw-bold ms-2">Full Name</Form.Label>
                       <Form.Control
                         required
                         placeholder="John Doe"
+                        className="py-3 px-4 rounded-4 bg-light border-0 shadow-none"
+                        style={{ fontSize: '0.9rem' }}
                         value={formData.name}
                         onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                       />
                     </Form.Group>
                   </Col>
                   <Col md={6}>
-                    <Form.Group className="mb-2">
-                      <Form.Label className="small fw-semibold">Username</Form.Label>
+                    <Form.Group>
+                      <Form.Label className="small fw-bold ms-2">Username</Form.Label>
                       <Form.Control
                         required
-                        placeholder="johndoe123"
+                        placeholder="johndoe"
+                        className="py-3 px-4 rounded-4 bg-light border-0 shadow-none"
+                        style={{ fontSize: '0.9rem' }}
                         value={formData.username}
                         onChange={(e) => setFormData({ ...formData, username: e.target.value })}
                       />
@@ -86,42 +91,57 @@ const RegisterPage = () => {
                   </Col>
                 </Row>
 
-                <Form.Group className="mb-2">
-                  <Form.Label className="small fw-semibold">Email Address</Form.Label>
+                <Form.Group className="mt-3">
+                  <Form.Label className="small fw-bold ms-2">Email Address</Form.Label>
                   <Form.Control
                     type="email"
                     required
                     placeholder="name@example.com"
+                    className="py-3 px-4 rounded-4 bg-light border-0 shadow-none"
+                    style={{ fontSize: '0.9rem' }}
                     value={formData.email}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                   />
                 </Form.Group>
 
-                <Form.Group className="mb-2">
-                  <Form.Label className="small fw-semibold">Phone Number</Form.Label>
+                <Form.Group className="mt-3">
+                  <Form.Label className="small fw-bold ms-2">Phone Number</Form.Label>
                   <Form.Control
                     type="tel"
                     required
-                    placeholder="+201234567890"
+                    placeholder="+20..."
+                    className="py-3 px-4 rounded-4 bg-light border-0 shadow-none"
+                    style={{ fontSize: '0.9rem' }}
                     value={formData.phoneNumber}
                     onChange={(e) => setFormData({ ...formData, phoneNumber: e.target.value })}
                   />
                 </Form.Group>
 
-                <Form.Group className="mb-4">
-                  <Form.Label className="small fw-semibold">Password</Form.Label>
-                  <Form.Control
-                    type="password"
-                    required
-                    minLength={6}
-                    placeholder="Min. 6 characters"
-                    value={formData.password}
-                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                  />
+                <Form.Group className="mt-3 mb-4">
+                  <Form.Label className="small fw-bold ms-2">Password</Form.Label>
+                  <div className="position-relative">
+                    <Form.Control
+                      type={showPassword ? "text" : "password"}
+                      required
+                      minLength={6}
+                      placeholder="••••••••"
+                      className="py-3 px-4 rounded-4 bg-light border-0 shadow-none"
+                      style={{ fontSize: '0.9rem', paddingRight: '3.5rem' }}
+                      value={formData.password}
+                      onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                    />
+                    <div 
+                      className="position-absolute top-50 end-0 translate-middle-y me-3 cursor-pointer text-muted"
+                      onClick={() => setShowPassword(!showPassword)}
+                      style={{ cursor: 'pointer', zIndex: 10 }}
+                    >
+                      {showPassword ? "👁️" : "👁️‍🗨️"}
+                    </div>
+                  </div>
                 </Form.Group>
 
                 <Button 
-                  className="w-100 py-2 fw-bold" 
+                  className="w-100 py-3 fw-bold rounded-4 shadow-sm mt-2" 
                   type="submit" 
                   variant="primary"
                   disabled={status === "loading"}
@@ -129,17 +149,17 @@ const RegisterPage = () => {
                   {status === "loading" ? (
                     <>
                       <Spinner size="sm" className="me-2" />
-                      Creating account...
+                      Creating Account...
                     </>
                   ) : (
-                    "Register"
+                    "Create Account"
                   )}
                 </Button>
               </Form>
 
-              <div className="text-center mt-4">
-                <p className="small mb-0">
-                  Already have an account? <Link to="/login" className="fw-bold text-decoration-none">Login</Link>
+              <div className="text-center mt-5">
+                <p className="small text-muted mb-0">
+                  Already a member? <Link to="/login" className="fw-bold text-primary text-decoration-none ms-1">Login</Link>
                 </p>
               </div>
             </Card.Body>

@@ -39,6 +39,11 @@ const protect = async (req, res, next) => {
 
     // لو كل حاجة تمام، بنحط بيانات اليوزر في كائن الطلب (req.user) عشان أي Controller بعد كده يقدر يستخدمها بسهولة.
     req.user = user;
+
+    // تحديث تاريخ آخر ظهور (lastActive) بشكل صامت في الخلفية
+    User.findByIdAndUpdate(user._id, { lastActive: new Date() }).catch(err => {
+      console.error("Failed to update lastActive:", err.message);
+    });
     
     // بنقول للسيرفر "كمل للخطوة اللي بعدها" (next).
     next();
