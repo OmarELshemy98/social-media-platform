@@ -25,12 +25,28 @@ const messageSchema = new mongoose.Schema(
       ref: "User",
       required: true,
     },
-    // نص الرسالة.
+    // نص الرسالة (اختياري لو فيه ميديا).
     content: {
       type: String,
-      required: true,
       trim: true,
       maxlength: 1000,
+      default: "",
+    },
+    // نوع الرسالة: نص، صورة، فيديو، صوت، أو ملف.
+    messageType: {
+      type: String,
+      enum: ["text", "image", "video", "audio", "file"],
+      default: "text",
+    },
+    // رابط الميديا (لو موجودة) المرفوعة على Cloudinary.
+    mediaUrl: {
+      type: String,
+      default: "",
+    },
+    // اسم الملف الأصلي (للملفات).
+    fileName: {
+      type: String,
+      default: "",
     },
     // هل الرسالة اتقرأت ولا لسه؟
     isRead: {

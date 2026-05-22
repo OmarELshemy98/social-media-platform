@@ -8,6 +8,7 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { Provider } from "react-redux";
+import { GoogleOAuthProvider } from "@react-oauth/google";
 import { store } from "./app/store";
 import { RouterProvider } from "react-router-dom";
 import router from "./app/router";
@@ -26,11 +27,20 @@ if (localStorage.getItem("token")) {
   store.dispatch(fetchCurrentUser());
 }
 
-// بدء عملية رندر التطبيق في عنصر root
+// ملاحظة: يجب عليك إنشاء Client ID حقيقي من Google Cloud Console ووضعه في ملف .env
+// VITE_GOOGLE_CLIENT_ID=your_real_id.apps.googleusercontent.com
+const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+
+if (!GOOGLE_CLIENT_ID) {
+  console.warn("⚠️ Google Client ID is missing. Google Login will not work. Please add VITE_GOOGLE_CLIENT_ID to your .env file.");
+}
+
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <Provider store={store}>
-      <RouterProvider router={router} />
+      <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID || "missing-id"}>
+        <RouterProvider router={router} />
+      </GoogleOAuthProvider>
     </Provider>
   </StrictMode>,
 )

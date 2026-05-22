@@ -114,11 +114,11 @@ const getMessagesByConversation = async (req, res, next) => {
 };
 
 /**
- * وظيفة إرسال رسالة جديدة
+ * وظيفة إرسال رسالة جديدة (نص، صورة، فيديو، صوت، أو ملف)
  */
 const sendMessage = async (req, res, next) => {
   try {
-    const { receiverId, content } = req.body;
+    const { receiverId, content, messageType, mediaUrl, fileName } = req.body;
     // بنتأكد إن في محادثة أو بنكريت واحدة.
     const conversation = await ensureConversation(req.user._id, receiverId);
 
@@ -127,7 +127,10 @@ const sendMessage = async (req, res, next) => {
       conversation: conversation._id,
       sender: req.user._id,
       receiver: receiverId,
-      content,
+      content: content || "",
+      messageType: messageType || "text",
+      mediaUrl: mediaUrl || "",
+      fileName: fileName || "",
     });
 
     // بنحدث وقت "آخر رسالة" في المحادثة عشان تطلع فوق في القائمة.
@@ -140,7 +143,7 @@ const sendMessage = async (req, res, next) => {
         recipient: receiverId,
         sender: req.user._id,
         type: "message",
-        message: `${req.user.username} sent you a message`,
+        message: `${req.user.username} sent you a ${messageType || 'message'}`,
       });
     }
 

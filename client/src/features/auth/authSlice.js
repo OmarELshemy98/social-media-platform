@@ -53,6 +53,18 @@ export const loginUser = createAsyncThunk(
   } 
 );
 
+export const loginWithGoogle = createAsyncThunk(
+  "auth/loginWithGoogle",
+  async (idToken, { rejectWithValue }) => {
+    try {
+      const { data } = await api.post("/auth/google", { idToken });
+      return data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || "Google login failed");
+    }
+  }
+);
+
 /**
  * وظيفة غير متزامنة لجلب بيانات المستخدم الحالي بناءً على الرمز المخزن
  */
@@ -140,6 +152,23 @@ const authSlice = createSlice({
         localStorage.setItem("user", JSON.stringify(action.payload.user));
       })
       .addCase(loginUser.rejected, (state, action) => {
+        state.status = "failed";
+        state.error = action.payload;
+      })
+      // Google Auth
+      .addCase(loginWithGoogle.pending, (state) => {
+        state.status = "loading";
+        state.error = null;
+      })
+      .addCase(loginWithGoogle.fulfilled, (state, action) => {
+        state.status = "succeeded";
+        state.user = action.payload.user;
+        state.token = action.payload.token;
+        state.isAuthenticated = true;
+        localStorage.setItem("token", action.payload.token);
+        localStorage.setItem("user", JSON.stringify(action.payload.user));
+      })
+      .addCase(loginWithGoogle.rejected, (state, action) => {
         state.status = "failed";
         state.error = action.payload;
       })
