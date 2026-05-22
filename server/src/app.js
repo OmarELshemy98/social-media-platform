@@ -29,6 +29,7 @@ app.use(
 const allowedOrigins = [
   process.env.CLIENT_URL,
   "https://satisfied-courage-production-852c.up.railway.app",
+  "https://crew-socialmedia.up.railway.app",
   "http://localhost:5173"
 ].filter(Boolean).map(url => url.replace(/\/$/, "")); // إزالة أي / في الآخر
 

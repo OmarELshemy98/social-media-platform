@@ -18,6 +18,102 @@ const generateToken = require("../utils/generateToken");
 const { sendWelcomeEmail, sendResetPasswordEmail } = require("../config/mailer");
 // مكتبة crypto: موجودة في Node.js بنستخدمها عشان نطلع أكواد عشوائية وسرية.
 const crypto = require("crypto");
+const { OAuth2Client } = require("google-auth-library");
+
+const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+
+if (!process.env.GOOGLE_CLIENT_ID) {
+  console.warn("⚠️ GOOGLE_CLIENT_ID is missing in server environment variables.");
+}
+
+/**
+ * وظيفة تسجيل الدخول أو التسجيل باستخدام Google
+ */
+const googleAuth = async (req, res, next) => {
+  try {
+    const { idToken } = req.body;
+
+    // ملاحظة: لو بنستخدم access_token من useGoogleLogin، بنحتاج نكلم الـ userInfo endpoint
+    // أو نستخدم idToken لو بنستخدم الـ Standard Google Button.
+    // بما إننا استخدمنا useGoogleLogin في الفرونت إند، فإحنا معانا access_token.
+    
+    let email, name, picture, googleId;
+
+    try {
+      // التحقق من الـ Access Token وجلب بيانات اليوزر من جوجل
+      const response = await fetch(`https://www.googleapis.com/oauth2/v3/userinfo?access_token=${idToken}`);
+      const data = await response.json();
+      
+      if (!data.email) {
+        throw new Error("Invalid Google Token");
+      }
+
+      email = data.email;
+      name = data.name;
+      picture = data.picture;
+      googleId = data.sub;
+    } catch (err) {
+      // لو فشل الـ Access Token، نجرب كـ ID Token (للدعم الكامل)
+      const ticket = await client.verifyIdToken({
+        idToken,
+        audience: process.env.GOOGLE_CLIENT_ID,
+      });
+      const payload = ticket.getPayload();
+      email = payload.email;
+      name = payload.name;
+      picture = payload.picture;
+      googleId = payload.sub;
+    }
+
+    // البحث عن المستخدم بالإيميل
+    let user = await User.findOne({ email: email.toLowerCase() });
+
+    if (!user) {
+      // إذا لم يكن موجوداً، نقوم بإنشاء حساب جديد
+      // توليد يوزر نيم عشوائي بناءً على الاسم
+      let username = name.toLowerCase().replace(/\s+/g, "") + Math.floor(Math.random() * 1000);
+      
+      // التأكد من أن اليوزر نيم فريد
+      let isUsernameTaken = await User.findOne({ username });
+      while (isUsernameTaken) {
+        username = name.toLowerCase().replace(/\s+/g, "") + Math.floor(Math.random() * 1000);
+        isUsernameTaken = await User.findOne({ username });
+      }
+
+      user = await User.create({
+        name,
+        username,
+        email: email.toLowerCase(),
+        avatarUrl: picture,
+        googleId, // حفظ معرف جوجل للربط مستقبلاً
+        password: await bcrypt.hash(crypto.randomBytes(16).toString("hex"), 12), // باسورد عشوائي بما أنه سجل بجوجل
+      });
+
+      // إرسال إيميل ترحيب
+      sendWelcomeEmail({ name: user.name, email: user.email }).catch((err) => {
+        console.error(`Welcome email failed: ${err.message}`);
+      });
+    }
+
+    // توليد توكن Crew
+    const token = generateToken({ id: user._id });
+
+    return res.status(200).json({
+      message: "Google Auth successful",
+      token,
+      user: {
+        id: user._id,
+        name: user.name,
+        username: user.username,
+        email: user.email,
+        bio: user.bio,
+        avatarUrl: user.avatarUrl,
+      },
+    });
+  } catch (error) {
+    return next(error);
+  }
+};
 
 /**
  * وظيفة تسجيل مستخدم جديد (Register)
@@ -205,4 +301,4 @@ const resetPassword = async (req, res, next) => {
   }
 };
 
-module.exports = { registerUser, loginUser, getCurrentUser, forgotPassword, resetPassword };
+module.exports = { registerUser, loginUser, googleAuth, getCurrentUser, forgotPassword, resetPassword };

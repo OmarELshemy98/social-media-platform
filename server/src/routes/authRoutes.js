@@ -9,6 +9,7 @@ const express = require("express");
 const {
   registerUser,
   loginUser,
+  googleAuth,
   getCurrentUser,
   forgotPassword,
   resetPassword,
@@ -27,6 +28,9 @@ router.post("/register", registerValidator, validateRequest, registerUser);
 
 // مسار تسجيل الدخول: يتحقق من البيانات أولاً ثم ينفذ عملية الدخول
 router.post("/login", loginValidator, validateRequest, loginUser);
+
+// مسار الدخول بجوجل
+router.post("/google", googleAuth);
 
 // مسار الحصول على بيانات المستخدم الحالي: يتطلب تسجيل الدخول (محمي بـ protect)
 router.get("/me", protect, getCurrentUser);

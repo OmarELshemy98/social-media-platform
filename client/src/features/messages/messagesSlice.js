@@ -51,9 +51,9 @@ export const fetchConversationMessages = createAsyncThunk(
  */
 export const sendMessage = createAsyncThunk(
   "messages/sendMessage",
-  async ({ receiverId, content }, { rejectWithValue }) => {
+  async (payload, { rejectWithValue }) => {
     try {
-      const { data } = await api.post("/messages", { receiverId, content });
+      const { data } = await api.post("/messages", payload);
       return data;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || "Failed to send message");
