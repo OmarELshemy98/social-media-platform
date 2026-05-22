@@ -97,6 +97,18 @@ export const deletePost = createAsyncThunk(
   }
 );
 
+export const sharePost = createAsyncThunk(
+  "posts/sharePost",
+  async ({ postId, content }, { rejectWithValue }) => {
+    try {
+      const { data } = await api.post(`/posts/${postId}/share`, { content });
+      return data.post;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || "Failed to share post");
+    }
+  }
+);
+
 const postsSlice = createSlice({
   name: "posts",
   initialState,
@@ -150,6 +162,9 @@ const postsSlice = createSlice({
       })
       .addCase(deletePost.fulfilled, (state, action) => {
         state.posts = state.posts.filter(p => p._id !== action.payload);
+      })
+      .addCase(sharePost.fulfilled, (state, action) => {
+        state.posts.unshift(action.payload);
       });
   },
 });

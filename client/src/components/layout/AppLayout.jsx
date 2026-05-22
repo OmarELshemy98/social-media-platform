@@ -72,7 +72,7 @@ const AppLayout = () => {
             <div className="d-flex align-items-center gap-3">
               <div className="user-nav-pill d-none d-xl-flex">
                 <img 
-                  src={user?.avatarUrl || "https://via.placeholder.com/32"} 
+                  src={user?.avatarUrl || `https://ui-avatars.com/api/?name=${user?.username || 'User'}&background=random`} 
                   className="rounded-circle" 
                   style={{ width: '32px', height: '32px', objectFit: 'cover' }} 
                 />

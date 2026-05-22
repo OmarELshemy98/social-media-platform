@@ -13,6 +13,7 @@ const {
   updatePost,
   deletePost,
   toggleReaction,
+  sharePost,
   addComment,
   updateComment,
   deleteComment,
@@ -33,8 +34,9 @@ router.get("/:postId", getSinglePost);
 router.put("/:postId", postUpdateValidator, validateRequest, updatePost);
 router.delete("/:postId", deletePost);
 
-// التفاعلات والتعليقات
+// التفاعلات والتعليقات والمشاركة
 router.patch("/:postId/reaction", toggleReaction);
+router.post("/:postId/share", sharePost);
 router.post("/:postId/comments", commentValidator, validateRequest, addComment);
 router.put("/:postId/comments/:commentId", commentValidator, validateRequest, updateComment);
 router.delete("/:postId/comments/:commentId", deleteComment);

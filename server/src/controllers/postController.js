@@ -5,6 +5,7 @@
  */
 
 const Post = require("../models/Post"); 
+const User = require("../models/User");
 const Notification = require("../models/Notification");
 
 /**
@@ -15,11 +16,34 @@ const createPost = async (req, res, next) => {
     const { content, tags = [], imageUrl = "" } = req.body;
     const normalizedTags = tags.map((tag) => String(tag).trim().toLowerCase());
 
+    // استخراج المنشنات من المحتوى (مثال: @username)
+    const mentionRegex = /@(\w+)/g;
+    const usernames = content.match(mentionRegex)?.map(m => m.substring(1)) || [];
+    
+    let mentions = [];
+    if (usernames.length > 0) {
+      const mentionedUsers = await User.find({ username: { $in: usernames } });
+      mentions = mentionedUsers.map(u => u._id);
+      
+      // إرسال إشعارات للمنشن
+      for (const u of mentionedUsers) {
+        if (String(u._id) !== String(req.user._id)) {
+          await Notification.create({
+            recipient: u._id,
+            sender: req.user._id,
+            type: "mention",
+            message: `${req.user.username} mentioned you in a post`,
+          });
+        }
+      }
+    }
+
     const post = await Post.create({
       author: req.user._id,
       content,
       imageUrl,
       tags: normalizedTags,
+      mentions,
     });
 
     const populated = await post.populate("author", "name username avatarUrl");
@@ -49,6 +73,10 @@ const getFeedPosts = async (req, res, next) => {
       Post.find(query)
         .populate("author", "name username avatarUrl")
         .populate("comments.author", "name username avatarUrl")
+        .populate({
+          path: "originalPost",
+          populate: { path: "author", select: "name username avatarUrl" }
+        })
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit),
@@ -71,7 +99,11 @@ const getSinglePost = async (req, res, next) => {
   try {
     const post = await Post.findById(req.params.postId)
       .populate("author", "name username avatarUrl")
-      .populate("comments.author", "name username avatarUrl");
+      .populate("comments.author", "name username avatarUrl")
+      .populate({
+        path: "originalPost",
+        populate: { path: "author", select: "name username avatarUrl" }
+      });
     if (!post) return res.status(404).json({ message: "Post not found" });
     return res.status(200).json({ post });
   } catch (error) {
@@ -259,6 +291,54 @@ const deleteComment = async (req, res, next) => {
   }
 };
 
+/**
+ * وظيفة مشاركة منشور (Share)
+ */
+const sharePost = async (req, res, next) => {
+  try {
+    const { postId } = req.params;
+    const { content = "" } = req.body;
+
+    const originalPost = await Post.findById(postId);
+    if (!originalPost) return res.status(404).json({ message: "Original post not found" });
+
+    // إنشاء منشور جديد مرتبط بالمنشور الأصلي
+    const sharedPost = await Post.create({
+      author: req.user._id,
+      content,
+      originalPost: originalPost._id,
+    });
+
+    // تحديث البوست الأصلي لإضافة اليوزر في قائمة الـ sharedBy (اختياري لو محتاجها للفلترة)
+    if (!originalPost.sharedBy) originalPost.sharedBy = [];
+    originalPost.sharedBy.push(req.user._id);
+    await originalPost.save();
+
+    // إرسال إشعار لصاحب المنشور الأصلي
+    if (String(originalPost.author) !== String(req.user._id)) {
+      await Notification.create({
+        recipient: originalPost.author,
+        sender: req.user._id,
+        type: "share", // تأكد من إضافة هذا النوع في موديل الإشعارات لو محتاج
+        post: originalPost._id,
+        message: `${req.user.username} shared your post`,
+      });
+    }
+
+    const populated = await sharedPost.populate([
+      { path: "author", select: "name username avatarUrl" },
+      { 
+        path: "originalPost", 
+        populate: { path: "author", select: "name username avatarUrl" } 
+      }
+    ]);
+
+    return res.status(201).json({ post: populated });
+  } catch (error) {
+    return next(error);
+  }
+};
+
 module.exports = {
   createPost,
   getFeedPosts,
@@ -266,6 +346,7 @@ module.exports = {
   updatePost,
   deletePost,
   toggleReaction,
+  sharePost,
   addComment,
   updateComment,
   deleteComment,

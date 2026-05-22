@@ -23,10 +23,21 @@ const startServer = async () => {
     await connectDB();
 
     // بدء الاستماع للطلبات على المنفذ المحدد
-    app.listen(PORT, () => {
+    const server = app.listen(PORT, () => {
       console.log(`🚀 Server running on port ${PORT}`);
       console.log(`💻 Environment: ${process.env.NODE_ENV || 'development'}`);
       console.log(`🔗 API URL: http://localhost:${PORT}/api`);
+    });
+
+    // التعامل مع أي أخطاء غير متوقعة خارج نطاق الـ Express (زي فشل الاتصال بالداتا بيز)
+    process.on("unhandledRejection", (err) => {
+      console.error(`Unhandled Rejection: ${err.message}`);
+      // إغلاق السيرفر بشكل نظيف في حالة وجود خطأ فادح.
+      // server.close(() => process.exit(1));
+    });
+
+    process.on("uncaughtException", (err) => {
+      console.error(`Uncaught Exception: ${err.message}`);
     });
   } catch (error) {
     console.error(`❌ Failed to start server: ${error.message}`);

@@ -19,6 +19,7 @@ const initialState = {
   profilePosts: [], // المنشورات بتاعة البروفايل ده.
   suggestions: [], // قائمة "ناس قد تعرفهم".
   relationship: "none", // حالة العلاقة (none, friends, request_sent, request_received, blocked).
+  mutualFriends: [], // الأصدقاء المشتركين.
   status: "idle",
   error: null,
 };
@@ -146,6 +147,7 @@ const profileSlice = createSlice({
         state.profileUser = action.payload.user;
         state.profilePosts = action.payload.posts;
         state.relationship = action.payload.relationship;
+        state.mutualFriends = action.payload.mutualFriends || [];
       })
       .addCase(fetchProfileByUsername.rejected, (state, action) => {
         // لو الطلب فشل.
@@ -160,9 +162,15 @@ const profileSlice = createSlice({
         // بنحدث حالة العلاقة لـ "أصدقاء".
         state.relationship = "friends";
       })
-      .addCase(unfriendUser.fulfilled, (state) => {
+      .addCase(unfriendUser.fulfilled, (state, action) => {
         // بنحدث حالة العلاقة لـ "لا يوجد".
         state.relationship = "none";
+        // لو بنمسح صديق من بروفايلنا، بنشيله من اللستة فوراً.
+        if (state.profileUser) {
+          state.profileUser.friends = state.profileUser.friends.filter(
+            f => String(f._id) !== String(action.meta.arg)
+          );
+        }
       })
       .addCase(blockUser.fulfilled, (state) => {
         // بنحدث حالة العلاقة لـ "محظور".

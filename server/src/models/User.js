@@ -100,6 +100,41 @@ const userSchema = new mongoose.Schema(
       type: Date,
       default: Date.now,
     },
+    // ميزة الألبومات والميديا
+    albums: [
+      {
+        name: { type: String, required: true },
+        description: { type: String, default: "" },
+        media: [
+          {
+            url: { type: String, required: true },
+            type: { type: String, enum: ["image", "video"], default: "image" },
+            createdAt: { type: Date, default: Date.now }
+          }
+        ],
+        isSystem: { type: Boolean, default: false } // لو ألبوم خاص بالنظام زي Profile Pictures
+      }
+    ],
+    // خاصية الـ About المفصلة
+    about: {
+      work: { type: String, default: "" },
+      education: { type: String, default: "" },
+      location: { type: String, default: "" },
+      city: { type: String, default: "" },
+      governorate: { type: String, default: "" },
+      country: { type: String, default: "" },
+      birthday: { type: Date },
+      gender: { type: String, enum: ["Male", "Female", "Other", ""], default: "" },
+      relationship: { type: String, enum: ["Single", "Married", "In a relationship", "Secret", ""], default: "" },
+      contactInfo: { type: String, default: "" },
+      links: [
+        {
+          platform: { type: String, default: "" },
+          url: { type: String, default: "" }
+        }
+      ]
+    },
+    googleId: { type: String },
     resetPasswordToken: String,
     resetPasswordExpire: Date,
   },

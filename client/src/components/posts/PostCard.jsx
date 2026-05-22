@@ -4,11 +4,11 @@
  */
 
 import { useState } from "react";
-import { Badge, Button, Card, Form, Dropdown, ButtonGroup } from "react-bootstrap";
+import { Badge, Button, Card, Form, Dropdown, ButtonGroup, Modal } from "react-bootstrap";
 import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { useDispatch } from "react-redux";
-import { toggleReaction, updateComment, deleteComment } from "../../features/posts/postsSlice";
+import { toggleReaction, updateComment, deleteComment, sharePost } from "../../features/posts/postsSlice";
 
 const REACTIONS = [
   { type: "like", emoji: "👍", label: "Like", color: "text-primary" },
@@ -23,6 +23,8 @@ const PostCard = ({ post, currentUserId, onComment, onDelete }) => {
   const [editingCommentId, setEditingCommentId] = useState(null);
   const [editContent, setEditContent] = useState("");
   const [showReactions, setShowReactions] = useState(false);
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [shareContent, setShareContent] = useState("");
 
   const myReaction = post?.reactions?.find(r => String(r.user) === String(currentUserId));
   const isOwner = String(post?.author?._id || post?.author) === String(currentUserId);
@@ -31,6 +33,12 @@ const PostCard = ({ post, currentUserId, onComment, onDelete }) => {
     if (!post?._id) return;
     dispatch(toggleReaction({ postId: post._id, type }));
     setShowReactions(false);
+  };
+
+  const handleShare = () => {
+    dispatch(sharePost({ postId: post._id, content: shareContent }));
+    setShowShareModal(false);
+    setShareContent("");
   };
 
   const submitComment = (e) => {
@@ -101,6 +109,26 @@ const PostCard = ({ post, currentUserId, onComment, onDelete }) => {
           <div className="post-content-area mb-4">
             <p className="fs-5 mb-3" style={{ whiteSpace: 'pre-wrap', lineHeight: '1.7' }}>{post?.content}</p>
             
+            {/* عرض البوست الأصلي لو ده شير */}
+            {post.originalPost && (
+              <Card className="bg-light border-0 rounded-4 mb-3 overflow-hidden shadow-sm">
+                <Card.Body className="p-3">
+                  <div className="d-flex align-items-center gap-2 mb-2">
+                    <img 
+                      src={post.originalPost.author?.avatarUrl || "https://via.placeholder.com/32"} 
+                      className="rounded-circle" 
+                      style={{ width: '32px', height: '32px', objectFit: 'cover' }} 
+                    />
+                    <div className="small fw-bold">@{post.originalPost.author?.username}</div>
+                  </div>
+                  <p className="small mb-2" style={{ whiteSpace: 'pre-wrap' }}>{post.originalPost.content}</p>
+                  {post.originalPost.imageUrl && (
+                    <img src={post.originalPost.imageUrl} className="w-100 rounded-3" style={{ maxHeight: '200px', objectFit: 'cover' }} />
+                  )}
+                </Card.Body>
+              </Card>
+            )}
+
             <div className="d-flex flex-wrap gap-2 mb-3">
               {(post.tags || []).map((tag) => (
                 <Badge key={`${post._id}-${tag}`} bg="light" className="text-primary border-0 fw-bold px-3 py-2 rounded-pill shadow-sm" style={{ fontSize: '0.75rem' }}>
@@ -161,6 +189,15 @@ const PostCard = ({ post, currentUserId, onComment, onDelete }) => {
                 <span className="fs-5">💬</span>
                 <span style={{ fontSize: '0.85rem' }}>{post?.comments?.length || 0}</span>
               </Button>
+
+              <Button 
+                variant="link" 
+                className="p-0 text-decoration-none text-muted d-flex align-items-center gap-1 fw-bold"
+                onClick={() => setShowShareModal(true)}
+              >
+                <span className="fs-5">🔄</span>
+                <span className="small">Share</span>
+              </Button>
             </div>
 
             <Button variant="link" className="p-0 text-decoration-none text-muted">
@@ -196,9 +233,13 @@ const PostCard = ({ post, currentUserId, onComment, onDelete }) => {
                   >
                     <div className="d-flex justify-content-between align-items-start mb-2">
                       <div className="d-flex align-items-center gap-2">
-                        <img src={c.author?.avatarUrl || "https://via.placeholder.com/28"} className="rounded-circle border" style={{ width: '28px', height: '28px' }} />
-                        <Link to={`/profile/${c.author?.username}`} className="small fw-bold text-decoration-none text-dark">
-                          @{c.author?.username}
+                        <img 
+                          src={c.author?.avatarUrl || `https://ui-avatars.com/api/?name=${c.author?.username || 'U'}&background=random`} 
+                          className="rounded-circle border" 
+                          style={{ width: '28px', height: '28px', objectFit: 'cover' }} 
+                        />
+                        <Link to={`/profile/${c.author?.username || ''}`} className="small fw-bold text-decoration-none text-dark">
+                          @{c.author?.username || "unknown"}
                         </Link>
                       </div>
                       {String(c.author?._id || c.author) === String(currentUserId) && (
@@ -228,6 +269,40 @@ const PostCard = ({ post, currentUserId, onComment, onDelete }) => {
           </div>
         </Card.Body>
       </Card>
+
+      {/* Share Modal */}
+      <Modal show={showShareModal} onHide={() => setShowShareModal(false)} centered contentClassName="rounded-5 border-0 shadow-lg">
+        <Modal.Header closeButton className="border-0 pb-0">
+          <Modal.Title className="fw-800 fs-4">Share Post</Modal.Title>
+        </Modal.Header>
+        <Modal.Body className="pt-4">
+          <Form.Group className="mb-4">
+            <Form.Control 
+              as="textarea" 
+              rows={3} 
+              placeholder="What's on your mind about this?" 
+              className="border-0 bg-light rounded-4 px-3 py-2 shadow-none"
+              value={shareContent}
+              onChange={(e) => setShareContent(e.target.value)}
+            />
+          </Form.Group>
+          <div className="p-3 bg-light rounded-4 border-start border-4 border-primary">
+            <div className="d-flex align-items-center gap-2 mb-2">
+              <img src={post.author?.avatarUrl || "https://via.placeholder.com/24"} className="rounded-circle" style={{ width: '24px', height: '24px' }} />
+              <span className="small fw-bold">@{post.author?.username}</span>
+            </div>
+            <p className="small mb-0 text-truncate">{post.content}</p>
+          </div>
+        </Modal.Body>
+        <Modal.Footer className="border-0 pt-0">
+          <Button variant="light" className="rounded-pill px-4 fw-bold" onClick={() => setShowShareModal(false)}>
+            Cancel
+          </Button>
+          <Button variant="primary" className="rounded-pill px-5 fw-bold" onClick={handleShare}>
+            Share Now
+          </Button>
+        </Modal.Footer>
+      </Modal>
     </motion.div>
   );
 };
