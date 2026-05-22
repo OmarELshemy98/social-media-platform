@@ -8,8 +8,9 @@
 
 import { useEffect } from "react";
 import { Badge, Button, Container, Nav, Navbar } from "react-bootstrap";
-import { Link, NavLink, Outlet, useNavigate } from "react-router-dom";
+import { Link, NavLink, Outlet, useNavigate, useLocation } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
+import { motion, AnimatePresence } from "framer-motion";
 import { logout } from "../../features/auth/authSlice";
 import { toggleTheme } from "../../features/theme/themeSlice";
 import { fetchNotifications } from "../../features/notifications/notificationsSlice";
@@ -17,6 +18,7 @@ import { fetchNotifications } from "../../features/notifications/notificationsSl
 const AppLayout = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useSelector((state) => state.auth);
   const { mode } = useSelector((state) => state.theme);
   const { unreadCount } = useSelector((state) => state.notifications);
@@ -38,21 +40,21 @@ const AppLayout = () => {
 
   return (
     <div className="app-shell">
-      <Navbar expand="lg" className="dashboard-nav shadow-sm border-bottom">
+      <Navbar expand="lg" className="dashboard-nav shadow-sm">
         <Container>
-          <Navbar.Brand as={Link} to="/" className="fw-bold text-primary fs-3" style={{ letterSpacing: '-1px' }}>
-            SocialSphere
+          <Navbar.Brand as={Link} to="/" className="fw-bold text-primary fs-3" style={{ letterSpacing: '-2px' }}>
+            Crew
           </Navbar.Brand>
           <Navbar.Toggle className="border-0 shadow-none" />
           <Navbar.Collapse>
             <Nav className="mx-auto gap-lg-2">
-              <Nav.Link as={NavLink} to="/" className="px-3 rounded-pill fw-semibold">
+              <Nav.Link as={NavLink} to="/" className="px-3 fw-semibold">
                 Feed
               </Nav.Link>
-              <Nav.Link as={NavLink} to="/profile" className="px-3 rounded-pill fw-semibold">
+              <Nav.Link as={NavLink} to="/profile" className="px-3 fw-semibold">
                 Profile
               </Nav.Link>
-              <Nav.Link as={NavLink} to="/notifications" className="px-3 rounded-pill fw-semibold position-relative">
+              <Nav.Link as={NavLink} to="/notifications" className="px-3 fw-semibold position-relative">
                 Notifications
                 {unreadCount > 0 && (
                   <Badge pill bg="danger" className="position-absolute top-0 start-100 translate-middle border border-2 border-surface" style={{ fontSize: '0.65rem', padding: '0.35em 0.6em' }}>
@@ -60,8 +62,11 @@ const AppLayout = () => {
                   </Badge>
                 )}
               </Nav.Link>
-              <Nav.Link as={NavLink} to="/messages" className="px-3 rounded-pill fw-semibold">
+              <Nav.Link as={NavLink} to="/messages" className="px-3 fw-semibold">
                 Messages
+              </Nav.Link>
+              <Nav.Link as={NavLink} to="/search" className="px-3 fw-semibold">
+                Search
               </Nav.Link>
             </Nav>
             <div className="d-flex align-items-center gap-3">
@@ -90,7 +95,17 @@ const AppLayout = () => {
         </Container>
       </Navbar>
       <Container className="py-4">
-        <Outlet />
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={location.pathname}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.3 }}
+          >
+            <Outlet />
+          </motion.div>
+        </AnimatePresence>
       </Container>
     </div>
   );

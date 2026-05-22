@@ -47,7 +47,7 @@ const ResetPasswordPage = () => {
           <Card className="auth-card border-0 shadow-lg">
             <Card.Body className="p-4 p-sm-5">
               <div className="text-center mb-4">
-                <h2 className="fw-bold text-primary mb-2">SocialSphere</h2>
+                <h1 className="fw-800 text-primary mb-2" style={{ letterSpacing: '-2px' }}>Crew</h1>
                 <h4 className="text-muted">Set New Password</h4>
                 <p className="small">Please enter your new password below</p>
               </div>

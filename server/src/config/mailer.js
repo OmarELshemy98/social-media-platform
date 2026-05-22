@@ -36,10 +36,10 @@ const getTransport = () => {
 const sendWelcomeEmail = async ({ name, email }) => {
   const transporter = getTransport();
   await transporter.sendMail({
-    from: process.env.SMTP_FROM || "no-reply@socialsphere.local",
+    from: process.env.SMTP_FROM || '"Crew Support" <no-reply@crew.com>',
     to: email,
-    subject: "Welcome to SocialSphere",
-    text: `Hi ${name}, welcome to SocialSphere! Your account is ready.`,
+    subject: "Welcome to Crew",
+    text: `Hi ${name}, welcome to Crew! Your account is ready.`,
   });
 };
 
@@ -49,13 +49,13 @@ const sendWelcomeEmail = async ({ name, email }) => {
 const sendResetPasswordEmail = async ({ email, resetUrl }) => {
   const transporter = getTransport();
   await transporter.sendMail({
-    from: process.env.SMTP_FROM || "no-reply@socialsphere.local",
+    from: process.env.SMTP_FROM || '"Crew Support" <no-reply@crew.com>',
     to: email,
-    subject: "SocialSphere Password Reset Request",
+    subject: "Crew Password Reset Request",
     text: `You are receiving this email because you (or someone else) has requested the reset of a password. \n\n Please click on the following link, or paste this into your browser to complete the process: \n\n ${resetUrl} \n\n If you did not request this, please ignore this email and your password will remain unchanged.`,
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e1e1e1; border-radius: 10px;">
-        <h2 style="color: #0d6efd; text-align: center;">SocialSphere</h2>
+        <h2 style="color: #0d6efd; text-align: center;">Crew</h2>
         <p>Hi there,</p>
         <p>You requested to reset your password. Click the button below to set a new password:</p>
         <div style="text-align: center; margin: 30px 0;">
@@ -63,7 +63,7 @@ const sendResetPasswordEmail = async ({ email, resetUrl }) => {
         </div>
         <p>If you didn't request this, please ignore this email.</p>
         <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
-        <p style="font-size: 12px; color: #777; text-align: center;">SocialSphere Team</p>
+        <p style="font-size: 12px; color: #777; text-align: center;">Crew Team</p>
       </div>
     `,
   });

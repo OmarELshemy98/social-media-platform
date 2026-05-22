@@ -42,7 +42,7 @@ const RegisterPage = () => {
           <Card className="auth-card border-0 shadow-lg" style={{ borderRadius: '2rem' }}>
             <Card.Body className="p-4 p-sm-5">
               <div className="text-center mb-5">
-                <h1 className="fw-800 text-primary mb-2" style={{ letterSpacing: '-2px' }}>SocialSphere</h1>
+                <h1 className="fw-800 text-primary mb-2" style={{ letterSpacing: '-2px' }}>Crew</h1>
                 <h4 className="fw-bold">Create Account</h4>
                 <p className="text-muted small">Join our exclusive community today</p>
               </div>

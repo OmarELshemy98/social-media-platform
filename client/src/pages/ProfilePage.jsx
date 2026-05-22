@@ -191,21 +191,65 @@ const ProfilePage = () => {
 
         <Tab.Content>
           <Tab.Pane eventKey="posts">
-            <Row className="justify-content-center">
+            <Row className="g-4">
               <Col md={8}>
                 {profilePosts.length === 0 ? (
-                  <div className="text-center py-5 text-muted">No posts yet.</div>
+                  <Card className="dashboard-card text-center py-5 border-0 shadow-sm">
+                    <Card.Body>
+                      <div className="fs-1 mb-3">📸</div>
+                      <h5 className="fw-bold">No posts yet</h5>
+                      <p className="text-muted small">When @{profileUser?.username} posts something, it will appear here.</p>
+                    </Card.Body>
+                  </Card>
                 ) : (
-                  profilePosts.map(post => (
-                    <PostCard 
-                      key={post._id} 
-                      post={post} 
-                      currentUserId={currentUser?._id || currentUser?.id}
-                      onComment={(pid, content) => dispatch(addCommentToPost({ postId: pid, content }))}
-                      onDelete={(pid) => window.confirm("Delete?") && dispatch(deletePost(pid))}
-                    />
+                  profilePosts.map((post, index) => (
+                    <motion.div
+                      key={post._id}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: index * 0.1 }}
+                    >
+                      <PostCard 
+                        post={post} 
+                        currentUserId={currentUser?._id || currentUser?.id}
+                        onComment={(pid, content) => dispatch(addCommentToPost({ postId: pid, content }))}
+                        onDelete={(pid) => window.confirm("Delete this post?") && dispatch(deletePost(pid))}
+                      />
+                    </motion.div>
                   ))
                 )}
+              </Col>
+              <Col md={4} className="d-none d-md-block">
+                <Card className="dashboard-card border-0 shadow-sm mb-4">
+                  <Card.Body>
+                    <h6 className="fw-bold mb-3">About</h6>
+                    <div className="d-flex flex-column gap-3">
+                      <div className="d-flex align-items-center gap-2">
+                        <span>📍</span>
+                        <span className="small text-muted">Earth</span>
+                      </div>
+                      <div className="d-flex align-items-center gap-2">
+                        <span>📅</span>
+                        <span className="small text-muted">Joined {new Date(profileUser?.createdAt).toLocaleDateString()}</span>
+                      </div>
+                    </div>
+                  </Card.Body>
+                </Card>
+
+                <Card className="dashboard-card border-0 shadow-sm">
+                  <Card.Body>
+                    <h6 className="fw-bold mb-3">Music Vibe 🎵</h6>
+                    <div className="p-3 rounded-4 bg-accent border-0 d-flex align-items-center gap-3">
+                      <div className="bg-primary rounded-3 p-2 text-white">
+                        💿
+                      </div>
+                      <div>
+                        <div className="small fw-bold">Midnight City</div>
+                        <div className="x-small text-muted" style={{ fontSize: '0.7rem' }}>M83</div>
+                      </div>
+                    </div>
+                  </Card.Body>
+                </Card>
               </Col>
             </Row>
           </Tab.Pane>
