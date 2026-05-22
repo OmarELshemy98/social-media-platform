@@ -43,11 +43,6 @@ const PostDetailsPage = () => {
     fetchPost();
   }, [fetchPost]);
 
-  const handleReaction = async (id, type) => {
-    await dispatch(toggleReaction({ postId: id, type }));
-    fetchPost();
-  };
-
   if (loading) {
     return (
       <div className="text-center py-5">
@@ -84,7 +79,6 @@ const PostDetailsPage = () => {
             <PostCard
               post={post}
               currentUserId={user?.id || user?._id}
-              onLike={handleLike}
               onComment={(postId, content) => {
                 dispatch(addCommentToPost({ postId, content })).then(() => fetchPost());
               }}

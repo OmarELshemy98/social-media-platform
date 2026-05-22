@@ -6,39 +6,31 @@
 import { useEffect, useState } from "react";
 import { Button, Card, Form, Row, Col, Nav, Tab, Modal, Spinner } from "react-bootstrap";
 import { useDispatch, useSelector } from "react-redux";
-import { useNavigate, useParams, Link } from "react-router-dom";
-import { motion, AnimatePresence } from "framer-motion";
+import { useParams, Link } from "react-router-dom";
+import { motion } from "framer-motion";
 
 import { 
   fetchProfileByUsername, 
-  updateMyProfile,
-  sendFriendRequest,
-  acceptFriendRequest,
-  unfriendUser,
-  blockUser
+  updateMyProfile
 } from "../features/profile/profileSlice";
 import { 
-  startConversationWithUser,
-  fetchConversationMessages,
   sendMessage
 } from "../features/messages/messagesSlice";
 import { 
   addCommentToPost, 
-  deletePost, 
-  toggleReaction 
+  deletePost
 } from "../features/posts/postsSlice";
 
 import { uploadImage } from "../services/uploadService";
 import PostCard from "../components/posts/PostCard";
-import { formatLastActive, isOnline } from "../utils/timeUtils";
+import { isOnline } from "../utils/timeUtils";
 
 const ProfilePage = () => {
   const dispatch = useDispatch();
-  const navigate = useNavigate();
   const { username } = useParams();
   
   const { user: currentUser } = useSelector((state) => state.auth);
-  const { profileUser, profilePosts, relationship, status: profileStatus } = useSelector((state) => state.profile);
+  const { profileUser, profilePosts } = useSelector((state) => state.profile);
   const { messages } = useSelector((state) => state.messages);
   
   const [editing, setEditing] = useState(false);

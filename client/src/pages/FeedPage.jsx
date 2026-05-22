@@ -46,6 +46,26 @@ const FeedPage = () => {
     dispatch(fetchSuggestions());
   }, [dispatch]);
 
+  return (
+    <Row className="g-4">
+      <Col xs={12} lg={8}>
+        {/* قسم الستوري */}
+        <StoriesSection />
+        
+        {/* صندوق كتابة بوست جديد */}
+        <PostComposer 
+          onPostCreated={(content, media) => dispatch(createPost({ content, media }))} 
+        />
+
+        {/* عرض البوستات أو رسالة تحميل أو خطأ */}
+        {status === "loading" && posts.length === 0 ? (
+          <div className="text-center py-5">
+            <Spinner animation="border" variant="primary" />
+          </div>
+        ) : error ? (
+          <Alert variant="danger">{error}</Alert>
+        ) : (
+          <div className="posts-feed">
             {posts.map((post) => (
               <PostCard
                 key={post._id}

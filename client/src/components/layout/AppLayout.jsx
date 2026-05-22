@@ -8,9 +8,8 @@
 
 import { useEffect } from "react";
 import { Badge, Button, Container, Nav, Navbar } from "react-bootstrap";
-import { Link, NavLink, Outlet, useNavigate, useLocation } from "react-router-dom";
+import { Link, NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
-import { motion, AnimatePresence } from "framer-motion";
 import { logout } from "../../features/auth/authSlice";
 import { toggleTheme } from "../../features/theme/themeSlice";
 import { fetchNotifications } from "../../features/notifications/notificationsSlice";
@@ -18,24 +17,9 @@ import { fetchNotifications } from "../../features/notifications/notificationsSl
 const AppLayout = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const location = useLocation();
   const { user } = useSelector((state) => state.auth);
   const { mode } = useSelector((state) => state.theme);
   const { unreadCount } = useSelector((state) => state.notifications);
-
-  // لتشغيل صوت الإشعارات
-  const playNotificationSound = () => {
-    try {
-      const audio = new Audio("https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3");
-      audio.volume = 0.5;
-      audio.play().catch(e => {
-        // غالباً بيفشل لو اليوزر لسه معملش أي حركة في الموقع (Browser Policy)
-        console.log("Audio play blocked by browser. Wait for user interaction.");
-      });
-    } catch (err) {
-      console.error("Audio error:", err);
-    }
-  };
 
   useEffect(() => {
     if (!user) return; // لا نطلب إشعارات لو اليوزر مش مسجل

@@ -15,8 +15,7 @@ import PostCard from "../components/posts/PostCard";
 
 import { 
   addCommentToPost, 
-  deletePost, 
-  toggleReaction
+  deletePost
 } from "../features/posts/postsSlice";
 
 const SearchPage = () => {

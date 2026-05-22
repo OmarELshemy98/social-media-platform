@@ -3,10 +3,10 @@
  * @description صفحة "الإعدادات" (Settings).
  */
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 // مكونات React-Bootstrap.
 import { Container, Row, Col, Card, Form, Button, ListGroup, Badge, Alert, Modal } from "react-bootstrap";
-import { useDispatch, useSelector } from "react-redux";
+import { useDispatch } from "react-redux";
 import { useNavigate } from "react-router-dom";
 // استيراد الـ API عشان نبعت طلبات مباشرة للسيرفر (زي تغيير الباسورد).
 import api from "../services/api";
@@ -16,7 +16,6 @@ import { logout } from "../features/auth/authSlice";
 const SettingsPage = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const { user } = useSelector((state) => state.auth);
 
   // States لتغيير كلمة السر.
   const [passwords, setPasswords] = useState({ current: "", next: "", confirm: "" });
@@ -32,19 +31,19 @@ const SettingsPage = () => {
   /**
    * وظيفة جلب قائمة المحظورين من السيرفر
    */
-  const fetchBlockedUsers = async () => {
+  const fetchBlockedUsers = useCallback(async () => {
     try {
       const { data } = await api.get("/profiles/me/blocked-users");
       setBlockedUsers(data.blockedUsers);
     } catch (err) {
-      console.error("Failed to fetch blocked users");
+      console.error("Failed to fetch blocked users", err);
     }
-  };
+  }, []);
 
   // أول ما الصفحة تفتح بنجيب الناس اللي عملنا لهم بلوك.
   useEffect(() => {
     fetchBlockedUsers();
-  }, []);
+  }, [fetchBlockedUsers]);
 
   /**
    * وظيفة فك الحظر عن يوزر
@@ -54,7 +53,7 @@ const SettingsPage = () => {
       await api.post(`/profiles/${userId}/unblock`);
       fetchBlockedUsers(); // تحديث القائمة بعد فك الحظر.
     } catch (err) {
-      console.error("Failed to unblock user");
+      console.error("Failed to unblock user", err);
     }
   };
 
@@ -86,6 +85,7 @@ const SettingsPage = () => {
       dispatch(logout());
       navigate("/login");
     } catch (err) {
+      console.error("Failed to disable account", err);
       alert("Failed to disable account");
     }
   };
@@ -96,6 +96,7 @@ const SettingsPage = () => {
       dispatch(logout());
       navigate("/login");
     } catch (err) {
+      console.error("Failed to delete account", err);
       alert("Failed to delete account");
     }
   };
