@@ -11,6 +11,8 @@ const {
   getMyConversations,
   getMessagesByConversation,
   sendMessage,
+  updateMessage,
+  deleteMessage,
   startConversationByUsername,
   markMessagesAsRead,
 } = require("../controllers/messageController");
@@ -24,5 +26,7 @@ router.get("/conversations/:conversationId/messages", getMessagesByConversation)
 router.put("/conversations/:conversationId/read", markMessagesAsRead);
 router.post("/conversations/start", startConversationByUsername);
 router.post("/", sendMessageValidator, validateRequest, sendMessage);
+router.put("/:messageId", updateMessage);
+router.delete("/:messageId", deleteMessage);
 
 module.exports = router;

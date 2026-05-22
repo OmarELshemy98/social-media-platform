@@ -119,6 +119,16 @@ const getMessagesByConversation = async (req, res, next) => {
 const sendMessage = async (req, res, next) => {
   try {
     const { receiverId, content, messageType, mediaUrl, fileName } = req.body;
+
+    // التأكد إن الطرف التاني مش عامل بلوك أو أنا مش عامله بلوك
+    const receiver = await User.findById(receiverId);
+    if (!receiver) return res.status(404).json({ message: "User not found" });
+
+    const isBlocked = receiver.blockedUsers.includes(req.user._id) || req.user.blockedUsers.includes(receiverId);
+    if (isBlocked) {
+      return res.status(403).json({ message: "Messaging is blocked between you and this user" });
+    }
+
     // بنتأكد إن في محادثة أو بنكريت واحدة.
     const conversation = await ensureConversation(req.user._id, receiverId);
 
@@ -181,10 +191,69 @@ const markMessagesAsRead = async (req, res, next) => {
   }
 };
 
+/**
+ * وظيفة تعديل رسالة (فقط لو معملش Seen)
+ */
+const updateMessage = async (req, res, next) => {
+  try {
+    const { messageId } = req.params;
+    const { content } = req.body;
+
+    const message = await Message.findById(messageId);
+    if (!message) return res.status(404).json({ message: "Message not found" });
+
+    // التأكد إن اللي بيعدل هو اللي بعت الرسالة
+    if (String(message.sender) !== String(req.user._id)) {
+      return res.status(403).json({ message: "Not authorized to edit this message" });
+    }
+
+    // الشرط الأساسي: اليوزر التاني لسه معملش Seen
+    if (message.isRead) {
+      return res.status(400).json({ message: "Cannot edit message after it has been seen" });
+    }
+
+    message.content = content;
+    message.isEdited = true;
+    await message.save();
+
+    return res.status(200).json({ message });
+  } catch (error) {
+    return next(error);
+  }
+};
+
+/**
+ * وظيفة مسح رسالة (فقط لو معملش Seen)
+ */
+const deleteMessage = async (req, res, next) => {
+  try {
+    const { messageId } = req.params;
+
+    const message = await Message.findById(messageId);
+    if (!message) return res.status(404).json({ message: "Message not found" });
+
+    if (String(message.sender) !== String(req.user._id)) {
+      return res.status(403).json({ message: "Not authorized to delete this message" });
+    }
+
+    if (message.isRead) {
+      return res.status(400).json({ message: "Cannot delete message after it has been seen" });
+    }
+
+    await message.deleteOne();
+
+    return res.status(200).json({ message: "Message deleted successfully" });
+  } catch (error) {
+    return next(error);
+  }
+};
+
 module.exports = { 
   startConversationByUsername, 
   getMyConversations, 
   getMessagesByConversation, 
   sendMessage,
+  updateMessage,
+  deleteMessage,
   markMessagesAsRead
 };

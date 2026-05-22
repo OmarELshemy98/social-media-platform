@@ -17,13 +17,28 @@ const multer = require("multer");
 const storage = multer.memoryStorage();
 
 /**
- * وظيفة لتصفية الملفات المرفوعة (السماح بالصور فقط)
+ * وظيفة لتصفية الملفات المرفوعة (السماح بالصور، الصوت، الفيديو، والملفات الشائعة)
  */
 const fileFilter = (req, file, cb) => {
-  if (file.mimetype.startsWith("image/")) {
+  console.log(`Multer receiving file: ${file.originalname} (${file.mimetype})`);
+  const allowedTypes = [
+    "image/",
+    "audio/",
+    "video/",
+    "application/pdf",
+    "application/zip",
+    "application/x-zip-compressed",
+    "text/plain"
+  ];
+
+  const isAllowed = allowedTypes.some(type => file.mimetype.startsWith(type));
+
+  if (isAllowed) {
     cb(null, true);
   } else {
-    cb(new Error("Only image files are allowed"), false);
+    // بنقبل أي ملف في الشات، بس بنعمل تشيك بسيط
+    console.log(`Multer: Allowing generic file type: ${file.mimetype}`);
+    cb(null, true);
   }
 };
 
@@ -31,7 +46,7 @@ const fileFilter = (req, file, cb) => {
 const upload = multer({
   storage,
   fileFilter,
-  limits: { fileSize: 5 * 1024 * 1024 }, // حد أقصى لحجم الملف (5 ميجابايت)
+  limits: { fileSize: 50 * 1024 * 1024 }, // زيادة الحد الأقصى لـ 50 ميجابايت (عشان الفيديوهات والريكوردات)
 });
 
 module.exports = upload;

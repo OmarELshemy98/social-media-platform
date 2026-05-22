@@ -8,11 +8,19 @@ const { body } = require("express-validator");
 
 const postCreateValidator = [
   body("content")
+    .optional({ checkFalsy: true })
     .trim()
-    .isLength({ min: 1, max: 2000 })
-    .withMessage("Post content is required and must be <= 2000 chars"),
+    .isLength({ max: 2000 })
+    .withMessage("Post content must be <= 2000 chars"),
   body("tags").optional().isArray().withMessage("Tags must be an array"),
   body("imageUrl").optional().isString(),
+  // التأكد من وجود محتوى أو صورة
+  body().custom((value, { req }) => {
+    if (!req.body.content && !req.body.imageUrl) {
+      throw new Error("Post must have either content or an image");
+    }
+    return true;
+  }),
 ];
 
 const postUpdateValidator = [

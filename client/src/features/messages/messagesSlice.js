@@ -61,6 +61,30 @@ export const sendMessage = createAsyncThunk(
   }
 );
 
+export const updateMessage = createAsyncThunk(
+  "messages/updateMessage",
+  async ({ messageId, content }, { rejectWithValue }) => {
+    try {
+      const { data } = await api.put(`/messages/${messageId}`, { content });
+      return data.message;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || "Failed to update message");
+    }
+  }
+);
+
+export const deleteMessage = createAsyncThunk(
+  "messages/deleteMessage",
+  async (messageId, { rejectWithValue }) => {
+    try {
+      await api.delete(`/messages/${messageId}`);
+      return messageId;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || "Failed to delete message");
+    }
+  }
+);
+
 /**
  * وظيفة بدء محادثة جديدة مع يوزر عن طريق الـ username بتاعه.
  */
@@ -117,6 +141,15 @@ const messagesSlice = createSlice({
         if (action.payload?.message) {
           state.messages.push(action.payload.message);
         }
+      })
+      .addCase(updateMessage.fulfilled, (state, action) => {
+        const index = state.messages.findIndex(m => m._id === action.payload._id);
+        if (index !== -1) {
+          state.messages[index] = action.payload;
+        }
+      })
+      .addCase(deleteMessage.fulfilled, (state, action) => {
+        state.messages = state.messages.filter(m => m._id !== action.payload);
       })
       .addCase(startConversationWithUser.fulfilled, (state, action) => {
         if (action.payload?._id) {

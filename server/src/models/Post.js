@@ -36,14 +36,34 @@ const postSchema = new mongoose.Schema(
     },
     content: {
       type: String,
-      required: true,
       trim: true,
       maxlength: 2000,
+      default: "",
     },
     imageUrl: {
       type: String, // لو البوست فيه صورة.
       default: "",
     },
+    // خاصية الشير: بنخزن الـ ID بتاع البوست الأصلي لو ده بوست مشير.
+    originalPost: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Post",
+      default: null,
+    },
+    // قائمة المستخدمين الذين شاركوا هذا المنشور
+    sharedBy: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+      },
+    ],
+    // خاصية المنشن
+    mentions: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+      },
+    ],
     // التفاعلات: مصفوفة كائنات تحتوي على اليوزر ونوع التفاعل (Like, Love, Sad, Angry)
     reactions: [
       {

@@ -18,10 +18,20 @@ const { notFound, errorHandler } = require("./middlewares/errorMiddleware");
 
 const app = express();
 
+// Request Logger لعمل Debugging
+app.use((req, res, next) => {
+  if (req.path === '/api/upload') {
+    console.log(`[DEBUG] Incoming upload request: ${req.method} ${req.path}`);
+  }
+  next();
+});
+
 // إعداد الـ Middlewares الأساسية:
 app.use(
   helmet({
-    crossOriginResourcePolicy: { policy: "cross-origin" }, 
+    crossOriginResourcePolicy: { policy: "cross-origin" },
+    crossOriginOpenerPolicy: { policy: "same-origin-allow-popups" }, // حل مشكلة الـ Google OAuth popup
+    contentSecurityPolicy: false, // تعطيل الـ CSP مؤقتاً للتأكد من أنها ليست السبب في الـ connection closed
   })
 );
 
@@ -48,10 +58,10 @@ app.use(
   })
 );
 
-// بنخلي السيرفر يفهم البيانات اللي مبعوتة بصيغة JSON وبنحدد أقصى حجم ليها 1 ميجا.
-app.use(express.json({ limit: "1mb" })); 
+// بنخلي السيرفر يفهم البيانات اللي مبعوتة بصيغة JSON وبنحدد أقصى حجم ليها 50 ميجا.
+app.use(express.json({ limit: "50mb" })); 
 // بنخلي السيرفر يفهم البيانات المبعوتة من الـ Forms العادية.
-app.use(express.urlencoded({ extended: true })); 
+app.use(express.urlencoded({ extended: true, limit: "50mb" })); 
 // تشغيل تسجيل الطلبات في الـ console (Logging).
 app.use(morgan("dev")); 
 

@@ -18,39 +18,58 @@ const getProfile = async (req, res, next) => {
     const { username } = req.params;
     
     // بندور على اليوزر في الداتا بيز باسمه، وبنستثني الباسورد من النتيجة للأمان.
-    const user = await User.findOne({ username }).select("-password");
+    // بنعمل populate للـ friends عشان تظهر أسمائهم وصورهم.
+    const user = await User.findOne({ username })
+      .select("-password")
+      .populate("friends", "name username avatarUrl lastActive");
+      
     if (!user) return res.status(404).json({ message: "User not found" });
 
     // بنشيك على "حالة العلاقة" بين اليوزر اللي فاتح الموقع وبين صاحب البروفايل ده.
-    const currentUser = req.user;
-    let relationship = "none"; // الحالة الافتراضية: مفيش علاقة.
+    const currentUser = await User.findById(req.user._id).populate("friends", "_id");
+    let relationship = "none"; 
+    let mutualFriends = [];
 
     if (currentUser) {
-      // لو هما أصدقاء فعلاً.
-      if (currentUser.friends?.includes(user._id)) {
+      // حساب الأصدقاء المشتركين
+      const currentUserFriendIds = currentUser.friends.map(f => String(f._id));
+      const profileUserFriendIds = user.friends.map(f => String(f._id));
+      
+      const mutualIds = profileUserFriendIds.filter(id => currentUserFriendIds.includes(id));
+      
+      if (mutualIds.length > 0) {
+        mutualFriends = await User.find({ _id: { $in: mutualIds } }).select("name username avatarUrl");
+      }
+
+      // تحديد العلاقة
+      if (currentUserFriendIds.includes(String(user._id))) {
         relationship = "friends";
       } 
-      // لو أنا بعتله طلب صداقة ولسه مردش.
       else if (currentUser.friendRequestsSent?.includes(user._id)) {
         relationship = "request_sent";
       } 
-      // لو هو اللي بعتلي طلب صداقة وأنا لسه مردتش.
       else if (currentUser.friendRequestsReceived?.includes(user._id)) {
         relationship = "request_received";
       } 
-      // لو أنا عامله بلوك.
       else if (currentUser.blockedUsers?.includes(user._id)) {
         relationship = "blocked";
       }
     }
 
-    // بنجيب كل البوستات اللي صاحب البروفايل ده نشرها، وبنرتبها من الأحدث للأقدم.
-    const posts = await Post.find({ author: user._id })
+    // بنجيب كل البوستات اللي صاحب البروفايل ده نشرها أو شاركها، وبنرتبها من الأحدث للأقدم.
+    const posts = await Post.find({ 
+      $or: [{ author: user._id }, { sharedBy: user._id }] 
+    })
       .populate("author", "name username avatarUrl")
+      .populate("comments.author", "name username avatarUrl")
+      .populate({
+        path: "originalPost",
+        populate: { path: "author", select: "name username avatarUrl" }
+      })
       .sort({ createdAt: -1 });
 
     // بنرد بكل البيانات للفرونت إند.
-    return res.status(200).json({ user, posts, relationship });
+    return res.status(200).json({ user, posts, relationship, mutualFriends });
   } catch (error) {
     return next(error);
   }
@@ -196,34 +215,76 @@ const getBlockedUsers = async (req, res, next) => {
 };
 
 /**
- * تحديث بيانات الملف الشخصي للمستخدم الحالي
+ * تحديث بيانات ملفي الشخصي
  */
 const updateMyProfile = async (req, res, next) => {
   try {
-    const { name, bio, avatarUrl, coverUrl } = req.body;
+    const { name, bio, avatarUrl, coverUrl, about } = req.body;
     const user = await User.findById(req.user._id);
-    if (!user) return res.status(404).json({ message: "User not found" });
 
-    // تحديث الحقول المرسلة فقط
-    if (name !== undefined) user.name = name;
-    if (bio !== undefined) user.bio = bio;
-    if (avatarUrl !== undefined) user.avatarUrl = avatarUrl;
-    if (coverUrl !== undefined) user.coverUrl = coverUrl;
+    if (name) user.name = name;
+    if (bio) user.bio = bio;
+    if (avatarUrl) user.avatarUrl = avatarUrl;
+    if (coverUrl) user.coverUrl = coverUrl;
+    
+    // تحديث بيانات الـ about لو موجودة
+    if (about) {
+      user.about = {
+        ...user.about,
+        ...about
+      };
+    }
 
     await user.save();
-    return res.status(200).json({
-      user: {
-        id: user._id,
-        name: user.name,
-        username: user.username,
-        email: user.email,
-        bio: user.bio,
-        avatarUrl: user.avatarUrl,
-        coverUrl: user.coverUrl,
-      },
-    });
+    res.status(200).json({ message: "Profile updated", user });
   } catch (error) {
-    return next(error);
+    next(error);
+  }
+};
+
+/**
+ * إنشاء ألبوم جديد
+ */
+const createAlbum = async (req, res, next) => {
+  try {
+    const { name, description } = req.body;
+    const user = await User.findById(req.user._id);
+
+    // التأكد إن الاسم مش مكرر
+    const exists = user.albums.find(a => a.name === name);
+    if (exists) return res.status(400).json({ message: "Album already exists" });
+
+    user.albums.push({ name, description, media: [] });
+    await user.save();
+
+    res.status(201).json({ message: "Album created", albums: user.albums });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * إضافة ميديا لألبوم
+ */
+const addMediaToAlbum = async (req, res, next) => {
+  try {
+    const { url, type, albumName } = req.body;
+    const user = await User.findById(req.user._id);
+
+    let album = user.albums.find(a => a.name === albumName);
+    
+    if (!album) {
+      // لو الألبوم مش موجود بنكريته (زي Profile Pictures)
+      user.albums.push({ name: albumName, media: [], isSystem: true });
+      album = user.albums[user.albums.length - 1];
+    }
+
+    album.media.push({ url, type });
+    await user.save();
+
+    res.status(200).json({ message: "Media added", albums: user.albums });
+  } catch (error) {
+    next(error);
   }
 };
 
@@ -307,6 +368,8 @@ const getSuggestions = async (req, res, next) => {
 module.exports = {
   getProfile,
   updateMyProfile,
+  createAlbum,
+  addMediaToAlbum,
   sendFriendRequest,
   acceptFriendRequest,
   unfriendUser,

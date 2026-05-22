@@ -10,6 +10,8 @@ const validateRequest = require("../middlewares/validateRequest");
 const {
   getProfile,
   updateMyProfile,
+  createAlbum,
+  addMediaToAlbum,
   sendFriendRequest,
   acceptFriendRequest,
   unfriendUser,
@@ -31,6 +33,10 @@ router.get("/:username", protect, getProfile);
 
 // تحديث بيانات ملفي الشخصي (يتطلب تحقق من البيانات وحماية المسار)
 router.put("/me/update", protect, updateProfileValidator, validateRequest, updateMyProfile);
+
+// مسارات الميديا والألبومات
+router.post("/me/albums", protect, createAlbum);
+router.post("/me/media", protect, addMediaToAlbum);
 
 // مسارات الصداقة والحظر
 router.post("/:userId/friend-request", protect, sendFriendRequest);

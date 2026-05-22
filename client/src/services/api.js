@@ -11,6 +11,7 @@ import axios from "axios";
 const api = axios.create({
   // تحديد الرابط الأساسي للـ API
   baseURL: import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api",
+  timeout: 60000, // زيادة المهلة لـ 60 ثانية لرفع الملفات الكبيرة
 });
 
 /**
