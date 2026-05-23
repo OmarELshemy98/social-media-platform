@@ -133,7 +133,7 @@ const FeedPage = () => {
                   {suggestions.slice(0, 5).map((sug) => (
                     <div key={sug._id} className="d-flex align-items-center mb-3 p-2 hover-bg rounded-4 transition">
                       <img 
-                        src={sug.avatarUrl || "https://via.placeholder.com/40"} 
+                        src={sug.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(sug.username || sug.name || 'User')}&background=random`} 
                         alt="avatar" 
                         className="rounded-circle me-3 border"
                         style={{ width: '40px', height: '40px', objectFit: 'cover' }}

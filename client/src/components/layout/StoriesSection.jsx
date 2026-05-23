@@ -78,7 +78,7 @@ const StoriesSection = () => {
               style={{ width: '80px', height: '80px' }}
             >
               <img 
-                src={story.user?.avatarUrl || "https://via.placeholder.com/80"} 
+                src={story.user?.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(story.user?.username || 'User')}&background=random`} 
                 alt="story"
                 className="rounded-circle w-100 h-100 object-fit-cover"
               />
@@ -120,7 +120,7 @@ const StoriesSection = () => {
           >✕</Button>
           
           <div className="story-header position-absolute top-0 start-0 w-100 p-3 z-2 d-flex align-items-center gap-2" style={{ background: 'linear-gradient(to bottom, rgba(0,0,0,0.7), transparent)' }}>
-            <img src={selectedStory?.user?.avatarUrl || "https://via.placeholder.com/40"} className="rounded-circle" style={{ width: '40px', height: '40px' }} />
+            <img src={selectedStory?.user?.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(selectedStory?.user?.username || 'User')}&background=random`} className="rounded-circle" style={{ width: '40px', height: '40px' }} />
             <span className="text-white fw-bold">@{selectedStory?.user?.username}</span>
           </div>
 

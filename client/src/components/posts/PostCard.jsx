@@ -79,7 +79,7 @@ const PostCard = ({ post, currentUserId, onComment, onDelete }) => {
             <div className="d-flex align-items-center gap-3">
               <motion.img 
                 whileHover={{ scale: 1.1 }}
-                src={post.author?.avatarUrl || "https://via.placeholder.com/48"} 
+                src={post.author?.avatarUrl || `https://ui-avatars.com/api/?name=${post.author?.username || 'User'}&background=random`} 
                 className="rounded-circle border" 
                 style={{ width: '48px', height: '48px', objectFit: 'cover' }} 
               />
@@ -115,7 +115,7 @@ const PostCard = ({ post, currentUserId, onComment, onDelete }) => {
                 <Card.Body className="p-3">
                   <div className="d-flex align-items-center gap-2 mb-2">
                     <img 
-                      src={post.originalPost.author?.avatarUrl || "https://via.placeholder.com/32"} 
+                      src={post.originalPost.author?.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(post.originalPost.author?.username || 'User')}&background=random`} 
                       className="rounded-circle" 
                       style={{ width: '32px', height: '32px', objectFit: 'cover' }} 
                     />
@@ -288,7 +288,11 @@ const PostCard = ({ post, currentUserId, onComment, onDelete }) => {
           </Form.Group>
           <div className="p-3 bg-light rounded-4 border-start border-4 border-primary">
             <div className="d-flex align-items-center gap-2 mb-2">
-              <img src={post.author?.avatarUrl || "https://via.placeholder.com/24"} className="rounded-circle" style={{ width: '24px', height: '24px' }} />
+              <img 
+                src={post.author?.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(post.author?.username || 'User')}&background=random`} 
+                className="rounded-circle" 
+                style={{ width: '24px', height: '24px', objectFit: 'cover' }} 
+              />
               <span className="small fw-bold">@{post.author?.username}</span>
             </div>
             <p className="small mb-0 text-truncate">{post.content}</p>

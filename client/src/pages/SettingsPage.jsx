@@ -170,7 +170,7 @@ const SettingsPage = () => {
                   {blockedUsers.map(u => (
                     <ListGroup.Item key={u._id} className="d-flex align-items-center justify-content-between py-3 px-0 border-top">
                       <div className="d-flex align-items-center">
-                        <img src={u.avatarUrl || "https://via.placeholder.com/40"} className="rounded-circle me-3" style={{width:'40px', height:'40px'}} />
+                        <img src={u.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(u.username || 'User')}&background=random`} className="rounded-circle me-3" style={{width:'40px', height:'40px'}} />
                         <span className="fw-bold">@{u.username}</span>
                       </div>
                       <Button variant="outline-primary" size="sm" className="rounded-pill" onClick={() => handleUnblock(u._id)}>Unblock</Button>

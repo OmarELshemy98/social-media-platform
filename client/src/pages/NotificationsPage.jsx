@@ -88,7 +88,7 @@ const NotificationsPage = () => {
                 onClick={() => handleNotificationClick(n)}
               >
                 <img 
-                  src={n.sender?.avatarUrl || "https://via.placeholder.com/40"} 
+                  src={n.sender?.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(n.sender?.username || 'User')}&background=random`} 
                   alt="sender" 
                   className="rounded-circle"
                   style={{ width: '40px', height: '40px', objectFit: 'cover' }}

@@ -114,7 +114,7 @@ const SearchPage = () => {
                       className="d-flex align-items-center mb-3 p-2 hover-bg rounded-4 transition bg-light border-0"
                     >
                       <img 
-                        src={u.avatarUrl || "https://via.placeholder.com/48"} 
+                        src={u.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(u.username || u.name || 'User')}&background=random`} 
                         alt="avatar" 
                         className="rounded-circle me-3 border shadow-sm"
                         style={{ width: '48px', height: '48px', objectFit: 'cover' }}
