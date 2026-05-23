@@ -24,9 +24,17 @@ const SettingsPage = () => {
   // قائمة المستخدمين المحظورين.
   const [blockedUsers, setBlockedUsers] = useState([]);
   
-  // States للتحكم في النوافذ المنبثقة (Modals) لتأكيد مسح الحساب.
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [showDisableModal, setShowDisableModal] = useState(false);
+  // State للأصوات
+  const [soundEnabled, setSoundEnabled] = useState(localStorage.getItem("sound_enabled") !== "false");
+
+  /**
+   * وظيفة تغيير إعدادات الصوت
+   */
+  const toggleSound = (e) => {
+    const enabled = e.target.checked;
+    setSoundEnabled(enabled);
+    localStorage.setItem("sound_enabled", enabled);
+  };
 
   /**
    * وظيفة جلب قائمة المحظورين من السيرفر
@@ -111,6 +119,7 @@ const SettingsPage = () => {
           <Card className="dashboard-card border-0 shadow-sm mb-4">
             <ListGroup variant="flush">
               <ListGroup.Item action href="#password" className="py-3 fw-semibold">Security & Password</ListGroup.Item>
+              <ListGroup.Item action href="#notifications" className="py-3 fw-semibold">Notifications & Sound</ListGroup.Item>
               <ListGroup.Item action href="#blocking" className="py-3 fw-semibold">Blocking</ListGroup.Item>
               <ListGroup.Item action href="#account" className="py-3 fw-semibold text-danger">Account Management</ListGroup.Item>
             </ListGroup>
@@ -154,6 +163,26 @@ const SettingsPage = () => {
                 </Form.Group>
                 <Button type="submit" variant="primary" className="rounded-pill px-4">Update Password</Button>
               </Form>
+            </Card.Body>
+          </Card>
+
+          {/* Notifications & Sound Section */}
+          <Card id="notifications" className="dashboard-card border-0 shadow-sm mb-4">
+            <Card.Body className="p-4">
+              <h5 className="fw-bold mb-4">Notifications & Sound</h5>
+              <div className="d-flex justify-content-between align-items-center p-3 bg-light rounded-3 mb-3">
+                <div>
+                  <h6 className="mb-1 fw-bold">App Sounds</h6>
+                  <p className="mb-0 small text-muted">Play sounds for messages, likes, and notifications.</p>
+                </div>
+                <Form.Check 
+                  type="switch"
+                  id="sound-switch"
+                  checked={soundEnabled}
+                  onChange={toggleSound}
+                  className="fs-4"
+                />
+              </div>
             </Card.Body>
           </Card>
 

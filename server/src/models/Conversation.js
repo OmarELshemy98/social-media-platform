@@ -22,6 +22,23 @@ const conversationSchema = new mongoose.Schema(
       type: Date,
       default: Date.now,
     },
+    // إعدادات المحادثة لكل يوزر بشكل منفصل
+    settings: [
+      {
+        user: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+        isArchived: { type: Boolean, default: false },
+        isMuted: { type: Boolean, default: false },
+        isPinned: { type: Boolean, default: false },
+        deletedAt: { type: Date, default: null }, // تاريخ مسح المحادثة لليوزر ده (عشان منظهرلوش الرسايل القديمة)
+      },
+    ],
+    // حظر الرسايل فقط (بين الطرفين)
+    messageBlockedBy: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+      },
+    ],
   },
   { timestamps: true }
 );

@@ -8,6 +8,7 @@
 import { useState } from "react";
 import { Button, Card, Form } from "react-bootstrap";
 import { uploadImage } from "../../services/uploadService";
+import { playSound } from "../../utils/soundUtils";
 
 const PostComposer = ({ onCreate }) => {
   const [content, setContent] = useState("");
@@ -33,6 +34,7 @@ const PostComposer = ({ onCreate }) => {
         .filter(Boolean),
       imageUrl,
     });
+    playSound("success");
     setContent("");
     setTags("");
     setImageFile(null);

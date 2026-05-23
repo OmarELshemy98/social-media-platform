@@ -9,6 +9,7 @@ import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { useDispatch } from "react-redux";
 import { toggleReaction, updateComment, deleteComment, sharePost } from "../../features/posts/postsSlice";
+import { playSound } from "../../utils/soundUtils";
 
 const REACTIONS = [
   { type: "like", emoji: "👍", label: "Like", color: "text-primary" },
@@ -32,11 +33,13 @@ const PostCard = ({ post, currentUserId, onComment, onDelete }) => {
   const handleReaction = (type) => {
     if (!post?._id) return;
     dispatch(toggleReaction({ postId: post._id, type }));
+    playSound("like");
     setShowReactions(false);
   };
 
   const handleShare = () => {
     dispatch(sharePost({ postId: post._id, content: shareContent }));
+    playSound("success");
     setShowShareModal(false);
     setShareContent("");
   };
@@ -45,6 +48,7 @@ const PostCard = ({ post, currentUserId, onComment, onDelete }) => {
     e.preventDefault();
     if (!comment.trim() || !post?._id) return;
     onComment(post._id, comment.trim());
+    playSound("message_sent");
     setComment("");
   };
 
@@ -56,6 +60,7 @@ const PostCard = ({ post, currentUserId, onComment, onDelete }) => {
   const saveEditComment = (cId) => {
     if (!post?._id) return;
     dispatch(updateComment({ postId: post._id, commentId: cId, content: editContent }));
+    playSound("success");
     setEditingCommentId(null);
   };
 
@@ -63,6 +68,7 @@ const PostCard = ({ post, currentUserId, onComment, onDelete }) => {
     if (!post?._id) return;
     if (window.confirm("Delete this comment?")) {
       dispatch(deleteComment({ postId: post._id, commentId: cId }));
+      playSound("delete");
     }
   };
 

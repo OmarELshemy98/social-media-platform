@@ -115,6 +115,36 @@ export const markMessagesAsRead = createAsyncThunk(
   }
 );
 
+/**
+ * وظيفة تحديث إعدادات المحادثة (Archive, Mute, Pin, Delete)
+ */
+export const updateConversationSettings = createAsyncThunk(
+  "messages/updateSettings",
+  async ({ conversationId, action }, { rejectWithValue }) => {
+    try {
+      const { data } = await api.put(`/messages/conversations/${conversationId}/settings`, { action });
+      return { conversationId, action, conversation: data.conversation };
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || "Failed to update settings");
+    }
+  }
+);
+
+/**
+ * وظيفة حظر الرسايل فقط
+ */
+export const toggleMessageBlock = createAsyncThunk(
+  "messages/toggleBlock",
+  async (conversationId, { rejectWithValue }) => {
+    try {
+      const { data } = await api.put(`/messages/conversations/${conversationId}/toggle-block`);
+      return { conversationId, conversation: data.conversation };
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || "Failed to toggle block");
+    }
+  }
+);
+
 const messagesSlice = createSlice({
   name: "messages",
   initialState,
@@ -153,11 +183,33 @@ const messagesSlice = createSlice({
       })
       .addCase(startConversationWithUser.fulfilled, (state, action) => {
         if (action.payload?._id) {
-          const exists = state.conversations.find(c => c._id === action.payload._id);
-          if (!exists) {
+          const index = state.conversations.findIndex(c => c._id === action.payload._id);
+          if (index === -1) {
             state.conversations.unshift(action.payload);
           }
           state.activeConversationId = action.payload._id;
+        }
+      })
+      .addCase(updateConversationSettings.fulfilled, (state, action) => {
+        const { conversationId, action: type, conversation } = action.payload;
+        if (type === 'delete') {
+          state.conversations = state.conversations.filter(c => c._id !== conversationId);
+          if (state.activeConversationId === conversationId) {
+            state.activeConversationId = null;
+            state.messages = [];
+          }
+        } else {
+          const index = state.conversations.findIndex(c => c._id === conversationId);
+          if (index !== -1) {
+            state.conversations[index] = conversation;
+          }
+        }
+      })
+      .addCase(toggleMessageBlock.fulfilled, (state, action) => {
+        const { conversationId, conversation } = action.payload;
+        const index = state.conversations.findIndex(c => c._id === conversationId);
+        if (index !== -1) {
+          state.conversations[index] = conversation;
         }
       })
       .addMatcher(

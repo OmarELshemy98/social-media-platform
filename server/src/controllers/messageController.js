@@ -25,6 +25,10 @@ const ensureConversation = async (userA, userB) => {
     conversation = await Conversation.create({
       participants: [userA, userB],
       lastMessageAt: new Date(),
+      settings: [
+        { user: userA },
+        { user: userB }
+      ]
     });
   }
   return conversation;
@@ -64,14 +68,28 @@ const startConversationByUsername = async (req, res, next) => {
  */
 const getMyConversations = async (req, res, next) => {
   try {
-    // بنجيب كل المحادثات اللي الـ ID بتاعي موجود في قائمة المشاركين فيها.
-    const conversations = await Conversation.find({
-      participants: req.user._id,
-    })
-      .populate("participants", "name username avatarUrl") // بنجيب بيانات الناس اللي بكلمهم.
-      .sort({ lastMessageAt: -1 }); // بنرتبهم من الأحدث للأقدم حسب آخر رسالة.
+    const userId = req.user._id;
 
-    return res.status(200).json({ conversations });
+    // بنجيب كل المحادثات اللي الـ ID بتاعي موجود فيها.
+    const conversations = await Conversation.find({
+      participants: userId,
+    })
+      .populate("participants", "name username avatarUrl")
+      .sort({ lastMessageAt: -1 });
+
+    // تصفية المحادثات:
+    // 1. لو اليوزر مسح المحادثة (deletedAt)، بنشيلها لو مفيش رسايل جديدة بعدها.
+    // 2. بنضيف بيانات الـ settings الخاصة باليوزر ده للرد.
+    const filteredConversations = conversations.filter(conv => {
+      const userSettings = conv.settings.find(s => String(s.user) === String(userId));
+      // لو المحادثة ممسوحة نهائياً لليوزر ده، بنشيلها (إلا لو في رسايل جديدة هتيجي مستقبلاً)
+      if (userSettings?.deletedAt && conv.lastMessageAt <= userSettings.deletedAt) {
+        return false;
+      }
+      return true;
+    });
+
+    return res.status(200).json({ conversations: filteredConversations });
   } catch (error) {
     return next(error);
   }
@@ -82,17 +100,25 @@ const getMyConversations = async (req, res, next) => {
  */
 const getMessagesByConversation = async (req, res, next) => {
   try {
+    const userId = req.user._id;
     // بنجيب المحادثة بالـ ID بتاعها.
     const conversation = await Conversation.findById(req.params.conversationId);
     if (!conversation) return res.status(404).json({ message: "Conversation not found" });
     
     // بنشيك: هل اليوزر اللي باعت الطلب هو طرف في المحادثة دي فعلاً؟
-    if (!conversation.participants.some((id) => String(id) === String(req.user._id))) {
+    if (!conversation.participants.some((id) => String(id) === String(userId))) {
       return res.status(403).json({ message: "Access denied for this conversation" });
     }
 
-    // بنجيب كل الرسايل التابعة للمحادثة دي، وبنرتبها من الأقدم للأحدث (عشان تظهر زي الشات الطبيعي).
-    const messages = await Message.find({ conversation: conversation._id })
+    const userSettings = conversation.settings.find(s => String(s.user) === String(userId));
+
+    // جلب الرسايل مع استثناء الرسايل اللي اتمسحت (قبل تاريخ deletedAt)
+    const messageQuery = { conversation: conversation._id };
+    if (userSettings?.deletedAt) {
+      messageQuery.createdAt = { $gt: userSettings.deletedAt };
+    }
+
+    const messages = await Message.find(messageQuery)
       .populate("sender", "name username avatarUrl")
       .populate("receiver", "name username avatarUrl")
       .sort({ createdAt: 1 });
@@ -101,7 +127,7 @@ const getMessagesByConversation = async (req, res, next) => {
     await Message.updateMany(
       { 
         conversation: conversation._id, 
-        receiver: req.user._id, 
+        receiver: userId, 
         isRead: false 
       },
       { isRead: true }
@@ -114,28 +140,34 @@ const getMessagesByConversation = async (req, res, next) => {
 };
 
 /**
- * وظيفة إرسال رسالة جديدة (نص، صورة، فيديو، صوت، أو ملف)
+ * وظيفة إرسال رسالة جديدة
  */
 const sendMessage = async (req, res, next) => {
   try {
     const { receiverId, content, messageType, mediaUrl, fileName } = req.body;
+    const senderId = req.user._id;
 
-    // التأكد إن الطرف التاني مش عامل بلوك أو أنا مش عامله بلوك
+    // التأكد إن الطرف التاني مش عامل بلوك أو أنا مش عامله بلوك (Full Block)
     const receiver = await User.findById(receiverId);
     if (!receiver) return res.status(404).json({ message: "User not found" });
 
-    const isBlocked = receiver.blockedUsers.includes(req.user._id) || req.user.blockedUsers.includes(receiverId);
-    if (isBlocked) {
+    const isFullBlocked = receiver.blockedUsers.includes(senderId) || req.user.blockedUsers.includes(receiverId);
+    if (isFullBlocked) {
       return res.status(403).json({ message: "Messaging is blocked between you and this user" });
     }
 
     // بنتأكد إن في محادثة أو بنكريت واحدة.
-    const conversation = await ensureConversation(req.user._id, receiverId);
+    const conversation = await ensureConversation(senderId, receiverId);
+
+    // التأكد من حظر الرسايل فقط (Message Block)
+    if (conversation.messageBlockedBy && conversation.messageBlockedBy.length > 0) {
+      return res.status(403).json({ message: "Messaging is temporarily blocked in this conversation" });
+    }
 
     // بنسيف الرسالة في الداتا بيز.
     const message = await Message.create({
       conversation: conversation._id,
-      sender: req.user._id,
+      sender: senderId,
       receiver: receiverId,
       content: content || "",
       messageType: messageType || "text",
@@ -143,21 +175,29 @@ const sendMessage = async (req, res, next) => {
       fileName: fileName || "",
     });
 
-    // بنحدث وقت "آخر رسالة" في المحادثة عشان تطلع فوق في القائمة.
+    // بنحدث وقت "آخر رسالة" في المحادثة.
     conversation.lastMessageAt = new Date();
+    
+    // لو المحادثة كانت ممسوحة أو مؤرشفة للطرف التاني، بنرجعها نشطة تاني.
+    conversation.settings.forEach(s => {
+      if (String(s.user) === String(receiverId)) {
+        s.isArchived = false;
+        // لا نقوم بتصفير deletedAt لأننا نريد إخفاء الرسايل القديمة فقط
+      }
+    });
+
     await conversation.save();
 
-    // لو أنا ببعت لحد تاني (مش لنفسي)، بنبعتله إشعار.
-    if (String(receiverId) !== String(req.user._id)) {
+    // إرسال إشعار
+    if (String(receiverId) !== String(senderId)) {
       await Notification.create({
         recipient: receiverId,
-        sender: req.user._id,
+        sender: senderId,
         type: "message",
         message: `${req.user.username} sent you a ${messageType || 'message'}`,
       });
     }
 
-    // بنرجع الرسالة كاملة ببيانات المرسل.
     const populated = await message.populate([
       { path: "sender", select: "name username avatarUrl" },
       { path: "receiver", select: "name username avatarUrl" }
@@ -166,6 +206,73 @@ const sendMessage = async (req, res, next) => {
     return res.status(201).json({ message: populated });
   } catch (error) {
     return next(error);
+  }
+};
+
+/**
+ * وظيفة لإدارة إعدادات المحادثة (Archive, Mute, Pin, Delete)
+ */
+const updateConversationSettings = async (req, res, next) => {
+  try {
+    const { conversationId } = req.params;
+    const { action } = req.body; // 'archive', 'unarchive', 'mute', 'unmute', 'pin', 'unpin', 'delete'
+    const userId = req.user._id;
+
+    const conversation = await Conversation.findById(conversationId);
+    if (!conversation) return res.status(404).json({ message: "Conversation not found" });
+
+    let userSettings = conversation.settings.find(s => String(s.user) === String(userId));
+    if (!userSettings) {
+      userSettings = { user: userId };
+      conversation.settings.push(userSettings);
+      userSettings = conversation.settings[conversation.settings.length - 1];
+    }
+
+    switch (action) {
+      case 'archive': userSettings.isArchived = true; break;
+      case 'unarchive': userSettings.isArchived = false; break;
+      case 'mute': userSettings.isMuted = true; break;
+      case 'unmute': userSettings.isMuted = false; break;
+      case 'pin': userSettings.isPinned = true; break;
+      case 'unpin': userSettings.isPinned = false; break;
+      case 'delete': 
+        userSettings.deletedAt = new Date();
+        userSettings.isArchived = false;
+        userSettings.isPinned = false;
+        break;
+      default: return res.status(400).json({ message: "Invalid action" });
+    }
+
+    await conversation.save();
+    return res.status(200).json({ message: `Conversation ${action}d successfully`, conversation });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * وظيفة حظر الرسايل فقط (Message Block)
+ */
+const toggleMessageBlock = async (req, res, next) => {
+  try {
+    const { conversationId } = req.params;
+    const userId = req.user._id;
+
+    const conversation = await Conversation.findById(conversationId);
+    if (!conversation) return res.status(404).json({ message: "Conversation not found" });
+
+    const blockedIndex = conversation.messageBlockedBy.indexOf(userId);
+    if (blockedIndex === -1) {
+      conversation.messageBlockedBy.push(userId);
+    } else {
+      conversation.messageBlockedBy.splice(blockedIndex, 1);
+    }
+
+    await conversation.save();
+    const action = blockedIndex === -1 ? "blocked" : "unblocked";
+    return res.status(200).json({ message: `Messages ${action} successfully`, conversation });
+  } catch (error) {
+    next(error);
   }
 };
 
@@ -255,5 +362,7 @@ module.exports = {
   sendMessage,
   updateMessage,
   deleteMessage,
-  markMessagesAsRead
+  markMessagesAsRead,
+  updateConversationSettings,
+  toggleMessageBlock
 };
