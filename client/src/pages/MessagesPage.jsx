@@ -17,9 +17,12 @@ import {
   updateMessage,
   deleteMessage,
   setActiveConversation,
-  startConversationWithUser
+  startConversationWithUser,
+  updateConversationSettings,
+  toggleMessageBlock
 } from "../features/messages/messagesSlice";
 import { uploadImage } from "../services/uploadService";
+import { playSound } from "../utils/soundUtils";
 
 const MessagesPage = () => {
   const dispatch = useDispatch();
@@ -58,12 +61,6 @@ const MessagesPage = () => {
   const { conversations, messages, activeConversationId } = useSelector((state) => state.messages);
   const { user } = useSelector((state) => state.auth);
 
-  // لتشغيل صوت الإشعارات
-  const playMessageSound = () => {
-    const audio = new Audio("https://assets.mixkit.co/active_storage/sfx/2354/2354-preview.mp3");
-    audio.play().catch(e => console.log("Audio play failed:", e));
-  };
-
   // أول ما الصفحة تفتح بنجيب كل المحادثات اللي اليوزر مشترك فيها.
   useEffect(() => {
     dispatch(fetchConversations());
@@ -85,7 +82,10 @@ const MessagesPage = () => {
       const lastMsg = messages[messages.length - 1];
       // لو الرسالة جاية من حد تاني مش مني
       if (lastMsg && String(lastMsg.sender?._id) !== String(user.id || user._id)) {
-        playMessageSound();
+        playSound("message_received");
+      } else if (lastMsg && String(lastMsg.sender?._id) === String(user.id || user._id)) {
+        // لو أنا اللي باعت الرسالة
+        playSound("message_sent");
       }
     }
     lastMessageCountRef.current = messages.length;
@@ -348,26 +348,37 @@ const MessagesPage = () => {
                     // تحسين منطق البحث عن الطرف الآخر لتجنب الـ unknown
                     const currentId = String(user?.id || user?._id);
                     const other = c.participants?.find(p => String(p?._id) !== currentId) || { username: "User", name: "User" };
+                    const userSettings = c.settings?.find(s => String(s.user) === currentId);
                     
+                    if (userSettings?.isArchived) return null;
+
                     return (
                       <Button
                         key={c._id}
                         variant={activeConversationId === c._id ? "primary" : "white"}
                         className={`w-100 mb-2 text-start p-3 border-0 d-flex align-items-center gap-3 transition ${activeConversationId === c._id ? "shadow-lg" : "hover-bg"}`}
-                        style={{ borderRadius: '1rem' }}
+                        style={{ borderRadius: '1rem', order: userSettings?.isPinned ? -1 : 0 }}
                         onClick={() => {
                           dispatch(setActiveConversation(c._id));
                           dispatch(fetchConversationMessages(c._id));
                         }}
                       >
-                        <img 
-                          src={other?.avatarUrl || `https://ui-avatars.com/api/?name=${other?.username || 'User'}&background=random`} 
-                          className="rounded-circle border" 
-                          style={{ width: '40px', height: '40px', objectFit: 'cover' }} 
-                        />
-                        <div className="overflow-hidden">
-                          <div className={`fw-bold mb-0 ${activeConversationId === c._id ? "text-white" : "text-dark"}`}>
-                            @{other?.username || "Guest User"}
+                        <div className="position-relative">
+                          <img 
+                            src={other?.avatarUrl || `https://ui-avatars.com/api/?name=${other?.username || 'User'}&background=random`} 
+                            className="rounded-circle border" 
+                            style={{ width: '40px', height: '40px', objectFit: 'cover' }} 
+                          />
+                          {userSettings?.isPinned && (
+                            <span className="position-absolute top-0 start-0 translate-middle badge rounded-pill bg-dark p-1" style={{ fontSize: '0.5rem' }}>📌</span>
+                          )}
+                        </div>
+                        <div className="overflow-hidden flex-grow-1">
+                          <div className="d-flex justify-content-between align-items-center">
+                            <div className={`fw-bold mb-0 text-truncate ${activeConversationId === c._id ? "text-white" : "text-dark"}`} style={{ maxWidth: '120px' }}>
+                              @{other?.username || "Guest User"}
+                            </div>
+                            {userSettings?.isMuted && <span className="small opacity-50">🔕</span>}
                           </div>
                           <div className={`small text-truncate ${activeConversationId === c._id ? "text-white-50" : "text-muted"}`}>
                             Click to chat
@@ -402,10 +413,45 @@ const MessagesPage = () => {
                       className="rounded-circle border" 
                       style={{ width: '32px', height: '32px', objectFit: 'cover' }} 
                     />
-                    <h6 className="mb-0 fw-800">@{otherParticipant.username}</h6>
+                    <div className="lh-1">
+                      <h6 className="mb-0 fw-800">@{otherParticipant.username}</h6>
+                      {activeConversation?.messageBlockedBy?.length > 0 && (
+                        <small className="text-danger fw-bold" style={{ fontSize: '0.65rem' }}>Blocked</small>
+                      )}
+                    </div>
                   </div>
                 )}
               </div>
+
+              {activeConversation && (
+                <Dropdown align="end">
+                  <Dropdown.Toggle variant="link" className="text-dark p-0 no-caret shadow-none fs-5">
+                    ⋮
+                  </Dropdown.Toggle>
+                  <Dropdown.Menu className="border-0 shadow-lg p-2 rounded-4" style={{ minWidth: '180px' }}>
+                    <Dropdown.Item className="rounded-3 py-2 small fw-bold" onClick={() => dispatch(updateConversationSettings({ conversationId: activeConversation._id, action: activeConversation.settings?.find(s => s.user === user.id)?.isPinned ? 'unpin' : 'pin' }))}>
+                      {activeConversation.settings?.find(s => s.user === user.id)?.isPinned ? "📌 Unpin" : "📍 Pin Chat"}
+                    </Dropdown.Item>
+                    <Dropdown.Item className="rounded-3 py-2 small fw-bold" onClick={() => dispatch(updateConversationSettings({ conversationId: activeConversation._id, action: activeConversation.settings?.find(s => s.user === user.id)?.isMuted ? 'unmute' : 'mute' }))}>
+                      {activeConversation.settings?.find(s => s.user === user.id)?.isMuted ? "🔊 Unmute" : "🔕 Mute Notifications"}
+                    </Dropdown.Item>
+                    <Dropdown.Item className="rounded-3 py-2 small fw-bold" onClick={() => dispatch(updateConversationSettings({ conversationId: activeConversation._id, action: 'archive' }))}>
+                      📥 Archive
+                    </Dropdown.Item>
+                    <Dropdown.Divider />
+                    <Dropdown.Item className="rounded-3 py-2 small fw-bold text-warning" onClick={() => dispatch(toggleMessageBlock(activeConversation._id))}>
+                      🚫 {activeConversation.messageBlockedBy?.includes(user.id || user._id) ? "Unblock Messages" : "Block Messages"}
+                    </Dropdown.Item>
+                    <Dropdown.Item className="rounded-3 py-2 small fw-bold text-danger" onClick={() => {
+                      if(window.confirm("Delete entire conversation? This cannot be undone.")) {
+                        dispatch(updateConversationSettings({ conversationId: activeConversation._id, action: 'delete' }));
+                      }
+                    }}>
+                      🗑️ Delete Chat
+                    </Dropdown.Item>
+                  </Dropdown.Menu>
+                </Dropdown>
+              )}
             </div>
             
             {/* Messages Area */}

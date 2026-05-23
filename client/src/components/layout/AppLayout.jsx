@@ -14,6 +14,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { logout } from "../../features/auth/authSlice";
 import { toggleTheme } from "../../features/theme/themeSlice";
 import { fetchNotifications } from "../../features/notifications/notificationsSlice";
+import { useRef } from "react";
+import { playSound } from "../../utils/soundUtils";
 
 const AppLayout = () => {
   const dispatch = useDispatch();
@@ -22,9 +24,12 @@ const AppLayout = () => {
   const { user } = useSelector((state) => state.auth);
   const { mode } = useSelector((state) => state.theme);
   const { unreadCount } = useSelector((state) => state.notifications);
+  
+  // مرجع لتتبع عدد الإشعارات السابقة
+  const prevUnreadCount = useRef(unreadCount);
 
   useEffect(() => {
-    if (!user) return; // لا نطلب إشعارات لو اليوزر مش مسجل
+    if (!user) return;
     
     dispatch(fetchNotifications());
     const interval = setInterval(() => {
@@ -32,6 +37,14 @@ const AppLayout = () => {
     }, 15000);
     return () => clearInterval(interval);
   }, [dispatch, user]);
+
+  // مراقبة زيادة عدد الإشعارات لتشغيل الصوت
+  useEffect(() => {
+    if (unreadCount > prevUnreadCount.current) {
+      playSound("notification");
+    }
+    prevUnreadCount.current = unreadCount;
+  }, [unreadCount]);
 
   const handleLogout = () => {
     dispatch(logout());
