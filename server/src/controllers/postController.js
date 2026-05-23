@@ -142,8 +142,10 @@ const deletePost = async (req, res, next) => {
   try {
     const post = await Post.findById(req.params.postId);
     if (!post) return res.status(404).json({ message: "Post not found" });
-    if (String(post.author) !== String(req.user._id)) {
-      return res.status(403).json({ message: "Only post owner can delete this post" });
+
+    // السماح لصاحب البوست أو الآدمن بالمسح
+    if (String(post.author) !== String(req.user._id) && req.user.role !== "admin") {
+      return res.status(403).json({ message: "Not authorized to delete this post" });
     }
 
     await post.deleteOne();
@@ -274,7 +276,12 @@ const deleteComment = async (req, res, next) => {
     const comment = post.comments.id(commentId);
     if (!comment) return res.status(404).json({ message: "Comment not found" });
 
-    if (String(comment.author) !== String(req.user._id) && String(post.author) !== String(req.user._id)) {
+    // السماح لصاحب التعليق، صاحب البوست، أو الآدمن بالمسح
+    const isAuthor = String(comment.author) === String(req.user._id);
+    const isPostOwner = String(post.author) === String(req.user._id);
+    const isAdmin = req.user.role === "admin";
+
+    if (!isAuthor && !isPostOwner && !isAdmin) {
       return res.status(403).json({ message: "Not authorized to delete this comment" });
     }
 

@@ -37,6 +37,11 @@ const protect = async (req, res, next) => {
       return res.status(401).json({ message: "Unauthorized: user not found" });
     }
 
+    // التأكد إن الحساب مش موقوف (Suspended)
+    if (user.status === "suspended") {
+      return res.status(403).json({ message: "Your account has been suspended by an admin" });
+    }
+
     // لو كل حاجة تمام، بنحط بيانات اليوزر في كائن الطلب (req.user) عشان أي Controller بعد كده يقدر يستخدمها بسهولة.
     req.user = user;
 
@@ -53,4 +58,15 @@ const protect = async (req, res, next) => {
   }
 };
 
-module.exports = { protect };
+/**
+ * Middleware للتحقق من صلاحيات الآدمن
+ */
+const isAdmin = (req, res, next) => {
+  if (req.user && req.user.role === "admin") {
+    next();
+  } else {
+    return res.status(403).json({ message: "Forbidden: Admin access required" });
+  }
+};
+
+module.exports = { protect, isAdmin };

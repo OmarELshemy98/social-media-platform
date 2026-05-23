@@ -20,6 +20,7 @@ import SearchPage from "../pages/SearchPage";
 import NotificationsPage from "../pages/NotificationsPage";
 import MessagesPage from "../pages/MessagesPage";
 import SettingsPage from "../pages/SettingsPage";
+import AdminDashboard from "../pages/AdminDashboard";
 
 const router = createBrowserRouter([
   // مسارات عامة (لا تتطلب تسجيل دخول)
@@ -43,6 +44,7 @@ const router = createBrowserRouter([
           { path: "/notifications", element: <NotificationsPage /> }, // صفحة التنبيهات
           { path: "/messages", element: <MessagesPage /> }, // صفحة الرسائل
           { path: "/settings", element: <SettingsPage /> }, // صفحة الإعدادات
+          { path: "/admin", element: <AdminDashboard /> }, // لوحة التحكم للآدمن
         ],
       },
     ],

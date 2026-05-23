@@ -68,6 +68,10 @@ const googleAuth = async (req, res, next) => {
     // البحث عن المستخدم بالإيميل
     let user = await User.findOne({ email: email.toLowerCase() });
 
+    if (user && user.status === "suspended") {
+      return res.status(403).json({ message: "Your account has been suspended." });
+    }
+
     if (!user) {
       // إذا لم يكن موجوداً، نقوم بإنشاء حساب جديد
       // توليد يوزر نيم عشوائي بناءً على الاسم
@@ -108,6 +112,8 @@ const googleAuth = async (req, res, next) => {
         email: user.email,
         bio: user.bio,
         avatarUrl: user.avatarUrl,
+        role: user.role,
+        status: user.status,
       },
     });
   } catch (error) {
@@ -166,6 +172,8 @@ const registerUser = async (req, res, next) => {
         email: user.email,
         bio: user.bio,
         avatarUrl: user.avatarUrl,
+        role: user.role,
+        status: user.status,
       },
     });
   } catch (error) {
@@ -197,6 +205,11 @@ const loginUser = async (req, res, next) => {
       return res.status(401).json({ message: "Invalid email or password" });
     }
 
+    // التأكد إن الحساب مش موقوف
+    if (user.status === "suspended") {
+      return res.status(403).json({ message: "Your account has been suspended. Please contact support." });
+    }
+
     // لو كل حاجة صح، بنطلع له توكن جديد.
     const token = generateToken({ id: user._id });
 
@@ -211,6 +224,8 @@ const loginUser = async (req, res, next) => {
         email: user.email,
         bio: user.bio,
         avatarUrl: user.avatarUrl,
+        role: user.role,
+        status: user.status,
       },
     });
   } catch (error) {

@@ -16,6 +16,7 @@ const notificationRoutes = require("./notificationRoutes"); // مسارات ال
 const searchRoutes = require("./searchRoutes"); // مسارات البحث.
 const uploadRoutes = require("./uploadRoutes"); // مسارات رفع الصور.
 const storyRoutes = require("./storyRoutes"); // مسارات الستوري.
+const adminRoutes = require("./adminRoutes"); // مسارات الإدارة.
 
 // ربط كل مجموعة مسارات بالكلمة المفتاحية بتاعتها.
 router.use("/auth", authRoutes); // أي حاجة بتبدأ بـ /api/auth
@@ -26,5 +27,6 @@ router.use("/notifications", notificationRoutes);
 router.use("/search", searchRoutes);
 router.use("/upload", uploadRoutes);
 router.use("/stories", storyRoutes);
+router.use("/admin", adminRoutes); // مسارات الإدارة (Admin)
 
 module.exports = router;
