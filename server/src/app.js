@@ -38,23 +38,30 @@ app.use(
 // إعداد الـ CORS بطريقة مرنة وقوية للإنتاج
 const allowedOrigins = [
   process.env.CLIENT_URL,
-  "https://satisfied-courage-production-852c.up.railway.app",
   "https://crew-socialmedia.up.railway.app",
-  "http://localhost:5173"
-].filter(Boolean).map(url => url.replace(/\/$/, "")); // إزالة أي / في الآخر
+  "http://localhost:5173",
+  "http://localhost:3000"
+].filter(Boolean).map(url => url.trim().replace(/\/$/, ""));
 
 app.use(
   cors({
     origin: function (origin, callback) {
-      // السماح لو الـ origin موجود في القائمة أو لو الطلب من نفس الدومين
-      if (!origin || allowedOrigins.includes(origin) || origin.includes("railway.app")) {
+      // السماح لو الـ origin موجود في القائمة أو لو الطلب من نفس الدومين أو من أي subdomain على railway.app
+      if (
+        !origin || 
+        allowedOrigins.includes(origin) || 
+        origin.endsWith(".railway.app") ||
+        origin.includes("railway.app")
+      ) {
         callback(null, true);
       } else {
-        console.log("Blocked by CORS:", origin);
+        console.log("Blocked by CORS origin:", origin);
         callback(new Error("Not allowed by CORS"));
       }
     },
     credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept"],
   })
 );
 
