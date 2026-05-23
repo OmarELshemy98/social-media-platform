@@ -81,6 +81,11 @@ const AppLayout = () => {
               <Nav.Link as={NavLink} to="/search" className="px-3 fw-semibold">
                 Search
               </Nav.Link>
+              {user?.role === "admin" && (
+                <Nav.Link as={NavLink} to="/admin" className="px-3 fw-semibold text-primary">
+                  Dashboard
+                </Nav.Link>
+              )}
             </Nav>
             <div className="d-flex align-items-center gap-3">
               <div className="user-nav-pill d-none d-xl-flex">

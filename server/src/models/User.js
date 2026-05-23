@@ -91,6 +91,16 @@ const userSchema = new mongoose.Schema(
         ref: "User",
       },
     ],
+    role: {
+      type: String,
+      enum: ["user", "admin"],
+      default: "user",
+    },
+    status: {
+      type: String,
+      enum: ["active", "suspended"],
+      default: "active",
+    },
     isActive: {
       type: Boolean,
       default: true,

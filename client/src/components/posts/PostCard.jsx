@@ -7,7 +7,7 @@ import { useState } from "react";
 import { Badge, Button, Card, Form, Dropdown, ButtonGroup, Modal } from "react-bootstrap";
 import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { useDispatch } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { toggleReaction, updateComment, deleteComment, sharePost } from "../../features/posts/postsSlice";
 import { playSound } from "../../utils/soundUtils";
 
@@ -29,6 +29,7 @@ const PostCard = ({ post, currentUserId, onComment, onDelete }) => {
 
   const myReaction = post?.reactions?.find(r => String(r.user) === String(currentUserId));
   const isOwner = String(post?.author?._id || post?.author) === String(currentUserId);
+  const isAdmin = useSelector(state => state.auth.user?.role === "admin");
 
   const handleReaction = (type) => {
     if (!post?._id) return;
@@ -98,14 +99,14 @@ const PostCard = ({ post, currentUserId, onComment, onDelete }) => {
                 </small>
               </div>
             </div>
-            {isOwner && (
+            {(isOwner || isAdmin) && (
               <Dropdown align="end">
                 <Dropdown.Toggle variant="link" className="text-muted p-0 shadow-none no-caret fs-5">
                   <motion.span whileHover={{ scale: 1.2 }}>⋮</motion.span>
                 </Dropdown.Toggle>
                 <Dropdown.Menu className="border-0 shadow-lg p-2" style={{ borderRadius: '1rem' }}>
                   <Dropdown.Item onClick={() => onDelete(post?._id)} className="text-danger small fw-bold rounded-3">
-                    Delete Post
+                    {isAdmin && !isOwner ? "Admin: Remove Post" : "Delete Post"}
                   </Dropdown.Item>
                 </Dropdown.Menu>
               </Dropdown>
@@ -248,14 +249,18 @@ const PostCard = ({ post, currentUserId, onComment, onDelete }) => {
                           @{c.author?.username || "unknown"}
                         </Link>
                       </div>
-                      {String(c.author?._id || c.author) === String(currentUserId) && (
+                      {(String(c.author?._id || c.author) === String(currentUserId) || isAdmin) && (
                         <Dropdown align="end">
                           <Dropdown.Toggle variant="link" className="text-muted p-0 shadow-none no-caret small">
                             ⋮
                           </Dropdown.Toggle>
                           <Dropdown.Menu className="border-0 shadow-lg p-2" style={{ borderRadius: '1rem' }}>
-                            <Dropdown.Item onClick={() => handleEditComment(c._id, c.content)} className="small rounded-3">Edit</Dropdown.Item>
-                            <Dropdown.Item onClick={() => handleDeleteComment(c._id)} className="small text-danger rounded-3">Delete</Dropdown.Item>
+                            {String(c.author?._id || c.author) === String(currentUserId) && (
+                              <Dropdown.Item onClick={() => handleEditComment(c._id, c.content)} className="small rounded-3">Edit</Dropdown.Item>
+                            )}
+                            <Dropdown.Item onClick={() => handleDeleteComment(c._id)} className="small text-danger rounded-3">
+                              {isAdmin && String(c.author?._id || c.author) !== String(currentUserId) ? "Admin: Delete" : "Delete"}
+                            </Dropdown.Item>
                           </Dropdown.Menu>
                         </Dropdown>
                       )}
