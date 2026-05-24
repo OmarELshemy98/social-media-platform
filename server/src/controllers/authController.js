@@ -323,6 +323,8 @@ const resetPassword = async (req, res, next) => {
 const generateAgoraToken = async (req, res, next) => {
   try {
     const { channelName } = req.query;
+    console.log(`[AGORA] Token request for channel: ${channelName}`);
+
     if (!channelName) {
       return res.status(400).json({ message: "Channel name is required" });
     }
@@ -331,17 +333,22 @@ const generateAgoraToken = async (req, res, next) => {
     const appCertificate = process.env.AGORA_APP_CERTIFICATE;
     
     if (!appId || !appCertificate) {
-      return res.status(500).json({ message: "Agora configuration missing on server" });
+      console.error("[AGORA ERROR] App ID or Certificate missing in process.env");
+      return res.status(500).json({ 
+        message: "Agora configuration missing on server",
+        details: "Please ensure AGORA_APP_ID and AGORA_APP_CERTIFICATE are set in Railway Variables."
+      });
     }
 
-    const uid = 0; // نستخدم 0 للسماح لأي مستخدم بالانضمام
+    const uid = 0;
     const role = RtcRole.PUBLISHER;
 
-    const expirationTimeInSeconds = 3600; // صلاحية التوكن ساعة واحدة
+    const expirationTimeInSeconds = 3600;
     const currentTimestamp = Math.floor(Date.now() / 1000);
     const privilegeExpiredTs = currentTimestamp + expirationTimeInSeconds;
 
-    // بناء التوكن باستخدام الـ App ID والـ Certificate
+    console.log(`[AGORA] Building token with AppID: ${appId.substring(0, 5)}...`);
+
     const token = RtcTokenBuilder.buildTokenWithUid(
       appId,
       appCertificate,
@@ -351,8 +358,10 @@ const generateAgoraToken = async (req, res, next) => {
       privilegeExpiredTs
     );
 
+    console.log("[AGORA] Token generated successfully");
     res.status(200).json({ token });
   } catch (error) {
+    console.error("[AGORA CRITICAL ERROR]", error);
     next(error);
   }
 };
