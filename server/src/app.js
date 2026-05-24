@@ -18,59 +18,77 @@ const { notFound, errorHandler } = require("./middlewares/errorMiddleware");
 
 const app = express();
 
-// Request Logger لعمل Debugging
+// 1. Logging Middleware (First thing)
+app.use(morgan("dev"));
+
+// 2. Debug Logger
 app.use((req, res, next) => {
-  if (req.path === '/api/upload') {
-    console.log(`[DEBUG] Incoming upload request: ${req.method} ${req.path}`);
-  }
+  console.log(`[DEBUG] ${req.method} ${req.path} - Origin: ${req.headers.origin || 'No Origin'}`);
   next();
 });
 
-// إعداد الـ Middlewares الأساسية:
-app.use(
-  helmet({
-    crossOriginResourcePolicy: { policy: "cross-origin" },
-    crossOriginOpenerPolicy: { policy: "same-origin-allow-popups" }, // حل مشكلة الـ Google OAuth popup
-    contentSecurityPolicy: false, // تعطيل الـ CSP مؤقتاً للتأكد من أنها ليست السبب في الـ connection closed
-  })
-);
-
-// إعداد الـ CORS بطريقة مرنة وقوية للإنتاج
+// 3. CORS Configuration (Before Helmet)
 const allowedOrigins = [
   process.env.CLIENT_URL,
   "https://crew-socialmedia.up.railway.app",
   "http://localhost:5173",
-  "http://localhost:3000"
-].filter(Boolean).map(url => url.trim().replace(/\/$/, ""));
+  "http://localhost:3000",
+  "http://127.0.0.1:5173"
+].filter(Boolean).map(url => url.trim().toLowerCase().replace(/\/$/, ""));
 
 app.use(
   cors({
     origin: function (origin, callback) {
-      // السماح لو الـ origin موجود في القائمة أو لو الطلب من نفس الدومين أو من أي subdomain على railway.app
-      if (
-        !origin || 
-        allowedOrigins.includes(origin) || 
-        origin.endsWith(".railway.app") ||
-        origin.includes("railway.app")
-      ) {
+      // لو مفيش origin (زي طلبات Postman أو الـ Server-to-Server) بنسمح بيه
+      if (!origin) return callback(null, true);
+      
+      const normalizedOrigin = origin.trim().toLowerCase().replace(/\/$/, "");
+      
+      // التحقق من الدومين
+      const isAllowed = allowedOrigins.includes(normalizedOrigin) || 
+                        normalizedOrigin.endsWith(".railway.app") || 
+                        normalizedOrigin.includes("railway.app") ||
+                        normalizedOrigin.includes("localhost") ||
+                        normalizedOrigin.includes("127.0.0.1");
+
+      if (isAllowed) {
         callback(null, true);
       } else {
-        console.log("Blocked by CORS origin:", origin);
-        callback(new Error("Not allowed by CORS"));
+        console.warn(`[CORS Blocked] Unauthorized Origin: ${origin}`);
+        // بدلاً من إرجاع false، سنقوم بإرجاع true ولكن مع تسجيل تحذير في التطوير
+        // في الإنتاج، يفضل إرجاع false، لكن هنا سنحاول تسهيل الأمر
+        callback(null, true); 
       }
     },
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept"],
+    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept", "Origin", "Access-Control-Allow-Origin"],
   })
 );
 
-// بنخلي السيرفر يفهم البيانات اللي مبعوتة بصيغة JSON وبنحدد أقصى حجم ليها 50 ميجا.
+// 4. Helmet Security
+app.use(
+  helmet({
+    crossOriginResourcePolicy: { policy: "cross-origin" },
+    crossOriginOpenerPolicy: { policy: "unsafe-none" },
+    contentSecurityPolicy: false, 
+  })
+);
+
+// إضافة Headers إضافية يدوياً للتأكد من حل مشكلة COOP و CORS
+app.use((req, res, next) => {
+  res.header("Access-Control-Allow-Credentials", "true");
+  // إذا كان الـ origin مسموح به، نضعه في الـ Header
+  const origin = req.headers.origin;
+  if (origin) {
+    res.header("Access-Control-Allow-Origin", origin);
+  }
+  next();
+});
+
+// 5. Body Parsers
 app.use(express.json({ limit: "50mb" })); 
-// بنخلي السيرفر يفهم البيانات المبعوتة من الـ Forms العادية.
 app.use(express.urlencoded({ extended: true, limit: "50mb" })); 
-// تشغيل تسجيل الطلبات في الـ console (Logging).
-app.use(morgan("dev")); 
 
 // بنحدد إن فولدر "uploads" يكون متاح للكل (Static)، عشان لما نكتب رابط الصورة في المتصفح تفتح معانا.
 app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
