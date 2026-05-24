@@ -20,7 +20,11 @@ import {
   setActiveConversation,
   startConversationWithUser,
   updateConversationSettings,
-  toggleMessageBlock
+  toggleMessageBlock,
+  createGroup,
+  addGroupMembers,
+  removeGroupMember,
+  promoteToAdmin
 } from "../features/messages/messagesSlice";
 import { uploadImage } from "../services/uploadService";
 import { playSound } from "../utils/soundUtils";
@@ -30,6 +34,7 @@ const MessagesPage = () => {
   const dispatch = useDispatch();
   const [searchParams] = useSearchParams();
   const usernameParam = searchParams.get("username");
+  const conversationIdParam = searchParams.get("conversationId");
 
   // States محلية لكتابة رسالة جديدة أو بدء شات جديد.
   const [draft, setDraft] = useState("");
@@ -37,8 +42,14 @@ const MessagesPage = () => {
   const [showNewChat, setShowNewChat] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   
+  // Group States
+  const [showGroupModal, setShowGroupModal] = useState(false);
+  const [groupName, setGroupName] = useState("");
+  const [selectedUsers, setSelectedUsers] = useState([]); // {id, name}
+  const [showGroupInfo, setShowGroupInfo] = useState(false);
+  
   // Call States
-  const [activeCall, setActiveCall] = useState(null); // { roomID, type }
+  const [activeCall, setActiveCall] = useState(null); // { roomID, type, conversationId }
   // Recording States
   const [isRecordingAudio, setIsRecordingAudio] = useState(false);
   const [isRecordingVideo, setIsRecordingVideo] = useState(false);
@@ -61,6 +72,49 @@ const MessagesPage = () => {
   const videoPreviewRef = useRef(null);
   const timerRef = useRef(null);
 
+  // Group Creation logic
+  const [groupSearchQuery, setGroupSearchQuery] = useState("");
+  const [groupSearchResults, setGroupSearchResults] = useState([]);
+
+  const handleCreateGroup = async () => {
+    if (!groupName.trim() || selectedUsers.length === 0) {
+      alert("Please provide group name and select at least one member.");
+      return;
+    }
+    
+    try {
+      const participants = selectedUsers.map(u => u._id);
+      dispatch(createGroup({ name: groupName.trim(), participants }));
+      setShowGroupModal(false);
+      setGroupName("");
+      setSelectedUsers([]);
+    } catch (err) {
+      alert("Failed to create group.");
+    }
+  };
+
+  const searchUsersForGroup = async (query) => {
+    setGroupSearchQuery(query);
+    if (query.length < 2) {
+      setGroupSearchResults([]);
+      return;
+    }
+    try {
+      const { data } = await api.get(`/search?q=${query}&type=users`);
+      setGroupSearchResults(data.results || []);
+    } catch (err) {
+      console.error("Search error:", err);
+    }
+  };
+
+  const toggleUserSelection = (userObj) => {
+    if (selectedUsers.find(u => u._id === userObj._id)) {
+      setSelectedUsers(selectedUsers.filter(u => u._id !== userObj._id));
+    } else {
+      setSelectedUsers([...selectedUsers, userObj]);
+    }
+  };
+
   // سحب البيانات من مخزن الرسائل والمصادقة.
   const { conversations, messages, activeConversationId } = useSelector((state) => state.messages);
   const { user } = useSelector((state) => state.auth);
@@ -82,8 +136,9 @@ const MessagesPage = () => {
   useEffect(() => {
     const roomID = searchParams.get("roomID");
     const type = searchParams.get("type");
+    const conversationId = searchParams.get("conversationId");
     if (roomID && type) {
-      setActiveCall({ roomID, type });
+      setActiveCall({ roomID, type, conversationId });
       // تنظيف الروابط بعد الاستخدام
       window.history.replaceState({}, '', '/messages');
     }
@@ -287,44 +342,52 @@ const MessagesPage = () => {
   };
 
   const initiateCall = (type) => {
-    if (!otherParticipant?._id) return;
+    if (!otherParticipant?._id && !activeConversation?.isGroup) return;
     
     const roomID = uuidv4();
-    const callMsg = `[CALL_INVITE]:${roomID}:${type}`;
+    const callMsg = `[CALL_INVITE]:${roomID}:${type}:${user.name || user.username || 'User'}`;
     
     // إرسال رسالة دعوة للمكالمة
-    dispatch(sendMessage({ 
-      receiverId: otherParticipant._id, 
-      content: callMsg, 
-      messageType: "text" 
-    }));
+    if (activeConversation?.isGroup) {
+      dispatch(sendMessage({ 
+        conversationId: activeConversationId, 
+        content: callMsg, 
+        messageType: "text" 
+      }));
+    } else {
+      dispatch(sendMessage({ 
+        receiverId: otherParticipant._id, 
+        content: callMsg, 
+        messageType: "text" 
+      }));
+    }
 
     // فتح واجهة المكالمة عند المتصل
-    setActiveCall({ roomID, type });
+    setActiveCall({ roomID, type, conversationId: activeConversationId });
     playSound('calling');
   };
 
   const endActiveCall = () => {
-    if (activeCall && otherParticipant?._id) {
+    if (activeCall) {
       const endMsg = `[CALL_END]:${activeCall.roomID}`;
-      dispatch(sendMessage({ 
-        receiverId: otherParticipant._id, 
-        content: endMsg, 
-        messageType: "text" 
-      }));
+      const convId = activeCall.conversationId || activeConversationId;
+      
+      if (activeConversation?.isGroup) {
+        dispatch(sendMessage({ conversationId: convId, content: endMsg, messageType: "text" }));
+      } else if (otherParticipant?._id) {
+        dispatch(sendMessage({ receiverId: otherParticipant._id, content: endMsg, messageType: "text" }));
+      }
     }
     setActiveCall(null);
     playSound('call_end');
   };
 
   const handleFileUpload = async (file, forcedType = null) => {
-    if (!file || !otherParticipant?._id) return;
+    if (!file || (!otherParticipant?._id && !activeConversation?.isGroup)) return;
     setIsUploading(true);
-    console.log("Attempting to upload file:", file.name, "size:", file.size);
     
     try {
       const url = await uploadImage(file);
-      console.log("File uploaded successfully, URL:", url);
       
       let type = forcedType;
       if (!type) {
@@ -334,12 +397,21 @@ const MessagesPage = () => {
         else type = 'file';
       }
 
-      dispatch(sendMessage({ 
-        receiverId: otherParticipant._id, 
-        messageType: type, 
-        mediaUrl: url,
-        fileName: file.name
-      }));
+      if (activeConversation?.isGroup) {
+        dispatch(sendMessage({ 
+          conversationId: activeConversationId, 
+          messageType: type, 
+          mediaUrl: url,
+          fileName: file.name
+        }));
+      } else {
+        dispatch(sendMessage({ 
+          receiverId: otherParticipant._id, 
+          messageType: type, 
+          mediaUrl: url,
+          fileName: file.name
+        }));
+      }
     } catch (err) {
       console.error("Upload error details:", err);
       alert(`Failed to upload file: ${err.response?.data?.message || err.message}`);
@@ -355,15 +427,28 @@ const MessagesPage = () => {
           <Card.Body className="p-4">
             <div className="d-flex justify-content-between align-items-center mb-4">
               <h5 className="fw-800 mb-0">Conversations</h5>
-              <Button 
-                variant="primary" 
-                size="sm" 
-                className="rounded-circle shadow-sm"
-                style={{ width: '32px', height: '32px', padding: 0 }}
-                onClick={() => setShowNewChat(!showNewChat)}
-              >
-                +
-              </Button>
+              <div className="d-flex gap-2">
+                <Button 
+                  variant="primary" 
+                  size="sm" 
+                  className="rounded-circle shadow-sm"
+                  style={{ width: '32px', height: '32px', padding: 0 }}
+                  onClick={() => setShowNewChat(!showNewChat)}
+                  title="New Chat"
+                >
+                  +
+                </Button>
+                <Button 
+                  variant="outline-primary" 
+                  size="sm" 
+                  className="rounded-circle shadow-sm d-flex align-items-center justify-content-center"
+                  style={{ width: '32px', height: '32px', padding: 0 }}
+                  onClick={() => setShowGroupModal(true)}
+                  title="Create Group"
+                >
+                  👥
+                </Button>
+              </div>
             </div>
 
             {showNewChat && (
@@ -398,46 +483,64 @@ const MessagesPage = () => {
                 </div>
               ) : (
                 conversations.map((c) => {
-                    // تحسين منطق البحث عن الطرف الآخر لتجنب الـ unknown
                     const currentId = String(user?.id || user?._id);
-                    const other = c.participants?.find(p => String(p?._id) !== currentId) || { username: "User", name: "User" };
+                    const otherUser = c.participants?.find((p) => String(p?._id || p) !== currentId);
                     const userSettings = c.settings?.find(s => String(s.user) === currentId);
                     
                     if (userSettings?.isArchived) return null;
 
+                    const isGroup = c.isGroup;
+                    const chatName = isGroup ? c.groupName : (otherUser?.name || otherUser?.username || "Deleted User");
+                    const chatAvatar = isGroup 
+                      ? (c.groupAvatar || `https://ui-avatars.com/api/?name=${c.groupName || 'Group'}&background=random`)
+                      : (otherUser?.avatarUrl || `https://ui-avatars.com/api/?name=${otherUser?.username || 'U'}&background=random`);
+
                     return (
-                      <Button
+                      <motion.div
                         key={c._id}
-                        variant={activeConversationId === c._id ? "primary" : "white"}
-                        className={`w-100 mb-2 text-start p-3 border-0 d-flex align-items-center gap-3 transition ${activeConversationId === c._id ? "shadow-lg" : "hover-bg"}`}
-                        style={{ borderRadius: '1rem', order: userSettings?.isPinned ? -1 : 0 }}
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        className={`conversation-item d-flex align-items-center p-3 mb-2 rounded-4 cursor-pointer transition-all ${
+                          activeConversationId === c._id ? "bg-primary text-white shadow-lg active-scale" : "bg-white hover-bg-light shadow-sm"
+                        }`}
+                        style={{ order: userSettings?.isPinned ? -1 : 0 }}
                         onClick={() => {
                           dispatch(setActiveConversation(c._id));
                           dispatch(fetchConversationMessages(c._id));
                         }}
                       >
                         <div className="position-relative">
-                          <img 
-                            src={other?.avatarUrl || `https://ui-avatars.com/api/?name=${other?.username || 'User'}&background=random`} 
-                            className="rounded-circle border" 
-                            style={{ width: '40px', height: '40px', objectFit: 'cover' }} 
+                          <img
+                            src={chatAvatar}
+                            alt={chatName}
+                            className="rounded-circle border border-2 border-white"
+                            style={{ width: '50px', height: '50px', objectFit: 'cover' }}
                           />
+                          {!isGroup && <div className="online-indicator position-absolute bottom-0 end-0 rounded-circle border border-2 border-white" style={{ width: '12px', height: '12px', backgroundColor: '#2ecc71' }}></div>}
                           {userSettings?.isPinned && (
                             <span className="position-absolute top-0 start-0 translate-middle badge rounded-pill bg-dark p-1" style={{ fontSize: '0.5rem' }}>📌</span>
                           )}
                         </div>
-                        <div className="overflow-hidden flex-grow-1">
-                          <div className="d-flex justify-content-between align-items-center">
-                            <div className={`fw-bold mb-0 text-truncate ${activeConversationId === c._id ? "text-white" : "text-dark"}`} style={{ maxWidth: '120px' }}>
-                              @{other?.username || "Guest User"}
+                        <div className="ms-3 flex-grow-1 overflow-hidden">
+                          <div className="d-flex justify-content-between align-items-center mb-1">
+                            <h6 className="fw-bold mb-0 text-truncate" style={{ fontSize: '0.95rem' }}>{chatName}</h6>
+                            <div className="d-flex align-items-center gap-1">
+                              {userSettings?.isMuted && <span className="small opacity-50">🔕</span>}
+                              <span className="x-small opacity-75">{c.lastMessageAt ? new Date(c.lastMessageAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ""}</span>
                             </div>
-                            {userSettings?.isMuted && <span className="small opacity-50">🔕</span>}
                           </div>
-                          <div className={`small text-truncate ${activeConversationId === c._id ? "text-white-50" : "text-muted"}`}>
-                            Click to chat
+                          <div className="d-flex justify-content-between align-items-center">
+                            <p className="mb-0 x-small text-truncate opacity-75" style={{ maxWidth: '140px' }}>
+                              {c.lastMessage?.content?.startsWith('[CALL_INVITE]:') ? "📞 Calling..." : 
+                               c.lastMessage?.content?.startsWith('[CALL_END]:') ? "🚫 Call Ended" :
+                               c.lastMessage?.content || "No messages yet"}
+                            </p>
+                            {c.unreadCount > 0 && (
+                              <span className="badge rounded-pill bg-danger shadow-sm">{c.unreadCount}</span>
+                            )}
                           </div>
                         </div>
-                      </Button>
+                      </motion.div>
                     );
                   })
               )}
@@ -459,17 +562,25 @@ const MessagesPage = () => {
                 >
                   ←
                 </Button>
-                {otherParticipant && (
+                {activeConversation && (
                   <div className="d-flex align-items-center gap-2">
                     <img 
-                      src={otherParticipant.avatarUrl || `https://ui-avatars.com/api/?name=${otherParticipant.username}&background=random`} 
+                      src={activeConversation.isGroup 
+                        ? (activeConversation.groupAvatar || `https://ui-avatars.com/api/?name=${activeConversation.groupName || 'Group'}&background=random`)
+                        : (otherParticipant?.avatarUrl || `https://ui-avatars.com/api/?name=${otherParticipant?.username || 'U'}&background=random`)} 
                       className="rounded-circle border" 
                       style={{ width: '32px', height: '32px', objectFit: 'cover' }} 
                     />
                     <div className="lh-1">
-                      <h6 className="mb-0 fw-800">@{otherParticipant.username}</h6>
-                      {activeConversation?.messageBlockedBy?.length > 0 && (
+                      <h6 className="mb-0 fw-800">
+                        {activeConversation.isGroup ? activeConversation.groupName : `@${otherParticipant?.username}`}
+                      </h6>
+                      {activeConversation.isGroup ? (
+                        <small className="text-primary fw-bold" style={{ fontSize: '0.65rem' }}>{activeConversation.participants?.length} members</small>
+                      ) : activeConversation.messageBlockedBy?.length > 0 ? (
                         <small className="text-danger fw-bold" style={{ fontSize: '0.65rem' }}>Blocked</small>
+                      ) : (
+                        <small className="text-primary fw-bold" style={{ fontSize: '0.65rem' }}>Active now</small>
                       )}
                     </div>
                   </div>
@@ -477,13 +588,24 @@ const MessagesPage = () => {
               </div>
 
               <div className="d-flex align-items-center gap-2">
-                {otherParticipant && !activeConversation?.messageBlockedBy?.length && (
+                {activeConversation?.isGroup && (
+                  <Button 
+                    variant="light" 
+                    className="rounded-circle border-0 shadow-sm p-0 d-flex align-items-center justify-content-center hover-scale"
+                    style={{ width: '36px', height: '36px', backgroundColor: 'rgba(var(--bs-primary-rgb), 0.1)', color: 'var(--bs-primary)' }}
+                    onClick={() => setShowGroupInfo(true)}
+                    title="Group Info"
+                  >
+                    ℹ️
+                  </Button>
+                )}
+                {activeConversation && !activeConversation?.messageBlockedBy?.length && (
                   <>
                     <Button 
                       variant="light" 
                       className="rounded-circle border-0 shadow-sm p-0 d-flex align-items-center justify-content-center hover-scale"
                       style={{ width: '36px', height: '36px', backgroundColor: 'rgba(var(--bs-primary-rgb), 0.1)', color: 'var(--bs-primary)' }}
-                      onClick={() => initiateCall('voice')}
+                      onClick={() => initiateCall('audio')}
                       title="Voice Call"
                     >
                       📞
@@ -632,7 +754,7 @@ const MessagesPage = () => {
                                             style={{ background: 'linear-gradient(45deg, #28a745, #20c997)' }}
                                             onClick={() => {
                                               const [_, roomID, type] = message.content.split(':');
-                                              setActiveCall({ roomID, type });
+                                              setActiveCall({ roomID, type, conversationId: activeConversationId });
                                             }}
                                           >
                                             Answer Call
@@ -645,7 +767,7 @@ const MessagesPage = () => {
                                             className="flex-grow-1 rounded-pill fw-800 py-2 border-opacity-25"
                                             onClick={() => {
                                               const [_, roomID, type] = message.content.split(':');
-                                              setActiveCall({ roomID, type });
+                                              setActiveCall({ roomID, type, conversationId: activeConversationId });
                                             }}
                                           >
                                             Rejoin Call
@@ -753,8 +875,13 @@ const MessagesPage = () => {
                       stopAudioRecording();
                       return;
                     }
-                    if (!draft.trim() || !otherParticipant?._id) return;
-                    dispatch(sendMessage({ receiverId: otherParticipant._id, content: draft.trim(), messageType: "text" }));
+                    if (!draft.trim()) return;
+                    
+                    if (activeConversation?.isGroup) {
+                      dispatch(sendMessage({ conversationId: activeConversationId, content: draft.trim(), messageType: "text" }));
+                    } else if (otherParticipant?._id) {
+                      dispatch(sendMessage({ receiverId: otherParticipant._id, content: draft.trim(), messageType: "text" }));
+                    }
                     setDraft("");
                   }}
                 >
@@ -917,16 +1044,163 @@ const MessagesPage = () => {
         .audio-wave-sim span:nth-child(4) { animation-delay: 0.3s; }
         .audio-wave-sim span:nth-child(5) { animation-delay: 0.4s; }
       `}</style>
-      {/* Call Modal/Container */}
+      {/* Agora Call Overlay */}
       {activeCall && (
         <CallContainer 
           roomID={activeCall.roomID}
           callType={activeCall.type}
           userID={user.id || user._id}
           userName={user.username}
+          conversationId={activeCall.conversationId || activeConversationId}
           onLeave={endActiveCall}
         />
       )}
+
+      {/* Group Creation Modal */}
+      <Modal show={showGroupModal} onHide={() => setShowGroupModal(false)} centered contentClassName="rounded-5 border-0 shadow-2xl">
+        <Modal.Header closeButton className="border-0 p-4">
+          <Modal.Title className="fw-900 tracking-tight">Create Luxury Group</Modal.Title>
+        </Modal.Header>
+        <Modal.Body className="p-4 pt-0">
+          <Form.Group className="mb-4">
+            <Form.Label className="fw-bold small text-uppercase tracking-widest text-muted">Group Identity</Form.Label>
+            <Form.Control 
+              placeholder="Enter a creative name..." 
+              className="rounded-4 py-3 border-0 bg-light shadow-inner"
+              value={groupName}
+              onChange={(e) => setGroupName(e.target.value)}
+            />
+          </Form.Group>
+
+          <Form.Group className="mb-4">
+            <Form.Label className="fw-bold small text-uppercase tracking-widest text-muted">Invite Members</Form.Label>
+            <Form.Control 
+              placeholder="Search by username..." 
+              className="rounded-4 py-3 border-0 bg-light shadow-inner mb-3"
+              value={groupSearchQuery}
+              onChange={(e) => searchUsersForGroup(e.target.value)}
+            />
+            
+            <div className="search-results overflow-auto mb-3" style={{ maxHeight: '150px' }}>
+              {groupSearchResults.map(u => (
+                <div 
+                  key={u._id} 
+                  className="d-flex align-items-center gap-3 p-2 hover-bg-light rounded-4 cursor-pointer"
+                  onClick={() => toggleUserSelection(u)}
+                >
+                  <img src={u.avatarUrl || `https://ui-avatars.com/api/?name=${u.username}`} className="rounded-circle" width="35" height="35" />
+                  <div className="flex-grow-1 small fw-bold">{u.name || u.username}</div>
+                  <div className={`rounded-circle border ${selectedUsers.find(s => s._id === u._id) ? 'bg-primary border-primary' : 'border-2'}`} style={{ width: '18px', height: '18px' }}>
+                    {selectedUsers.find(s => s._id === u._id) && <span className="text-white d-flex align-items-center justify-content-center" style={{ fontSize: '10px' }}>✓</span>}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="selected-members d-flex flex-wrap gap-2">
+              {selectedUsers.map(u => (
+                <span key={u._id} className="badge rounded-pill bg-primary bg-opacity-10 text-primary p-2 px-3 border border-primary border-opacity-25 d-flex align-items-center gap-2">
+                  {u.username}
+                  <span className="cursor-pointer fw-900" onClick={() => toggleUserSelection(u)}>×</span>
+                </span>
+              ))}
+            </div>
+          </Form.Group>
+
+          <Button 
+            variant="primary" 
+            className="w-100 rounded-pill py-3 fw-900 shadow-lg border-0 mt-3"
+            style={{ background: 'linear-gradient(45deg, var(--bs-primary), #00d2ff)' }}
+            onClick={handleCreateGroup}
+          >
+            Launch Group Session
+          </Button>
+        </Modal.Body>
+      </Modal>
+
+      {/* Group Info Modal */}
+      <Modal show={showGroupInfo} onHide={() => setShowGroupInfo(false)} centered contentClassName="rounded-5 border-0 shadow-2xl overflow-hidden">
+        <div className="group-info-header position-relative p-5 text-center text-white" style={{ background: 'linear-gradient(135deg, #1a1a1a, #000)' }}>
+           <img 
+             src={activeConversation?.groupAvatar || `https://ui-avatars.com/api/?name=${activeConversation?.groupName}&background=random&size=128`} 
+             className="rounded-circle border border-4 border-white border-opacity-10 shadow-2xl mb-3"
+             width="120" height="120"
+           />
+           <h3 className="fw-900 mb-1">{activeConversation?.groupName}</h3>
+           <p className="opacity-50 small tracking-widest text-uppercase">Private Luxury Group</p>
+           <Button 
+             variant="link" 
+             className="position-absolute top-0 end-0 p-4 text-white text-decoration-none fs-4"
+             onClick={() => setShowGroupInfo(false)}
+           >✕</Button>
+        </div>
+        <Modal.Body className="p-4">
+          <h6 className="fw-bold small text-uppercase tracking-widest text-muted mb-4">Members ({activeConversation?.participants?.length})</h6>
+          <div className="members-list overflow-auto" style={{ maxHeight: '300px' }}>
+            {activeConversation?.participants?.map(member => {
+              const isAdmin = activeConversation.groupAdmins?.some(a => String(a._id || a) === String(member._id || member));
+              const isOwner = String(activeConversation.groupAdmin?._id || activeConversation.groupAdmin) === String(member._id || member);
+              const currentUserIsAdmin = activeConversation.groupAdmins?.some(a => String(a._id || a) === String(user.id || user._id));
+              
+              return (
+                <div key={member._id} className="d-flex align-items-center gap-3 mb-3 p-2 rounded-4 hover-bg-light transition-all">
+                  <img src={member.avatarUrl || `https://ui-avatars.com/api/?name=${member.username}`} className="rounded-circle border" width="45" height="45" />
+                  <div className="flex-grow-1">
+                    <div className="fw-bold small">{member.name || member.username}</div>
+                    <div className="x-small text-muted">@{member.username}</div>
+                  </div>
+                  <div className="d-flex gap-2 align-items-center">
+                    {isOwner ? (
+                      <span className="badge rounded-pill bg-warning text-dark border-0 x-small fw-bold">Founder</span>
+                    ) : isAdmin ? (
+                      <span className="badge rounded-pill bg-info text-white border-0 x-small fw-bold">Admin</span>
+                    ) : null}
+                    
+                    {currentUserIsAdmin && String(member._id || member) !== String(user.id || user._id) && (
+                      <Dropdown align="end">
+                        <Dropdown.Toggle variant="link" className="p-0 text-muted shadow-none no-caret">⋮</Dropdown.Toggle>
+                        <Dropdown.Menu className="border-0 shadow-lg rounded-4">
+                          {!isAdmin && (
+                            <Dropdown.Item onClick={() => dispatch(promoteToAdmin({ conversationId: activeConversationId, userId: member._id }))} className="small fw-bold py-2">Promote to Admin</Dropdown.Item>
+                          )}
+                          <Dropdown.Item onClick={() => dispatch(removeGroupMember({ conversationId: activeConversationId, userId: member._id }))} className="small fw-bold py-2 text-danger">Remove from Group</Dropdown.Item>
+                        </Dropdown.Menu>
+                      </Dropdown>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          
+          <div className="d-grid mt-4">
+            <Button 
+              variant="outline-danger" 
+              className="rounded-pill py-3 fw-bold border-2"
+              onClick={() => {
+                if(window.confirm("Leave this group?")) {
+                  dispatch(removeGroupMember({ conversationId: activeConversationId, userId: user.id || user._id }));
+                  setShowGroupInfo(false);
+                }
+              }}
+            >
+              Leave Luxury Group
+            </Button>
+          </div>
+        </Modal.Body>
+      </Modal>
+
+      <style>{`
+        .shadow-2xl { box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); }
+        .shadow-inner { box-shadow: inset 0 2px 4px 0 rgba(0, 0, 0, 0.06); }
+        .fw-900 { font-weight: 900; }
+        .tracking-tight { letter-spacing: -0.025em; }
+        .tracking-widest { letter-spacing: 0.1em; }
+        .hover-bg-light:hover { background-color: #f8f9fa; }
+        .active-scale { transform: scale(1.02); }
+        .transition-all { transition: all 0.2s ease-in-out; }
+        .hover-scale:hover { transform: scale(1.1); }
+      `}</style>
     </Row>
   );
 };

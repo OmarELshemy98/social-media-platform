@@ -44,6 +44,29 @@ const conversationSchema = new mongoose.Schema(
         ref: "User",
       },
     ],
+    // خصائص الجروب (Group Chat)
+    isGroup: {
+      type: Boolean,
+      default: false,
+    },
+    groupName: {
+      type: String,
+      trim: true,
+    },
+    groupAvatar: {
+      type: String,
+      default: "",
+    },
+    groupAdmin: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+    },
+    groupAdmins: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+      },
+    ],
   },
   { timestamps: true }
 );

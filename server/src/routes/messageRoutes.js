@@ -28,6 +28,13 @@ router.get("/conversations/:conversationId/messages", getMessagesByConversation)
 router.put("/conversations/:conversationId/read", markMessagesAsRead);
 router.put("/conversations/:conversationId/settings", updateConversationSettings);
 router.put("/conversations/:conversationId/toggle-block", toggleMessageBlock);
+
+// مسارات الجروبات
+router.post("/groups", createGroupConversation);
+router.post("/groups/:conversationId/members", addGroupMembers);
+router.delete("/groups/:conversationId/members/:userId", removeGroupMember);
+router.put("/groups/:conversationId/promote/:userId", promoteToAdmin);
+
 router.post("/conversations/start", startConversationByUsername);
 router.post("/", sendMessageValidator, validateRequest, sendMessage);
 router.put("/:messageId", updateMessage);

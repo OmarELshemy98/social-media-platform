@@ -6,10 +6,7 @@ import { playSound, stopSound } from '../../utils/soundUtils';
 const IncomingCallModal = ({ callData, onAccept, onDecline }) => {
   useEffect(() => {
     console.log("[CALL] Modal mounted, starting ringtone...");
-    // محاولة تشغيل الصوت مع تأخير بسيط لضمان تفاعل المستخدم
-    const ringtoneTimeout = setTimeout(() => {
-      playSound('ringtone', true);
-    }, 500);
+    playSound('ringtone', true);
 
     // التوقف التلقائي بعد 45 ثانية لو مردش
     const timer = setTimeout(() => {
@@ -19,78 +16,116 @@ const IncomingCallModal = ({ callData, onAccept, onDecline }) => {
     return () => {
       console.log("[CALL] Modal unmounted, stopping ringtone...");
       stopSound('ringtone');
-      clearTimeout(ringtoneTimeout);
       clearTimeout(timer);
     };
-  }, []); // نستخدم مصفوفة فارغة ليعمل مرة واحدة عند التحميل
+  }, []);
 
   if (!callData) return null;
 
   return (
-    <Modal
-      show={true}
-      centered
-      backdrop="static"
-      keyboard={false}
-      className="incoming-call-modal"
-      contentClassName="bg-dark text-white rounded-5 border-0 shadow-lg overflow-hidden"
-      style={{ zIndex: 10001 }}
-    >
-      <div className="p-5 text-center position-relative">
+    <AnimatePresence>
+      <motion.div
+        initial={{ opacity: 0, scale: 0.9, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.9, y: 20 }}
+        className="incoming-call-overlay"
+        style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          width: '100vw',
+          height: '100vh',
+          zIndex: 10001,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          background: 'rgba(0,0,0,0.85)',
+          backdropFilter: 'blur(15px)',
+        }}
+      >
         <div 
-          className="position-absolute top-0 start-0 w-100 h-100" 
-          style={{ 
-            background: 'linear-gradient(135deg, rgba(var(--bs-primary-rgb), 0.2), rgba(0,0,0,0.8))',
-            zIndex: -1 
-          }} 
-        />
-        
-        <motion.div
-          animate={{ scale: [1, 1.1, 1] }}
-          transition={{ repeat: Infinity, duration: 2 }}
-          className="mb-4"
+          className="incoming-call-card text-center p-5 rounded-5 shadow-2xl position-relative overflow-hidden"
+          style={{
+            width: '400px',
+            background: 'linear-gradient(145deg, #1a1a1a, #0d0d0d)',
+            border: '1px solid rgba(255,255,255,0.05)',
+          }}
         >
-          <Image 
-            src={`https://ui-avatars.com/api/?name=${callData.callerName}&background=random&size=128`}
-            roundedCircle
-            className="shadow-lg border border-3 border-primary"
-            width={120}
-            height={120}
-          />
-        </motion.div>
+          {/* Animated Background Pulse */}
+          <div className="position-absolute top-50 start-50 translate-middle" style={{ zIndex: 0 }}>
+            <motion.div
+              animate={{ scale: [1, 1.5, 1], opacity: [0.1, 0.3, 0.1] }}
+              transition={{ repeat: Infinity, duration: 3 }}
+              style={{
+                width: '300px',
+                height: '300px',
+                borderRadius: '50%',
+                background: callData.type === 'video' ? 'radial-gradient(circle, #007bff, transparent)' : 'radial-gradient(circle, #28a745, transparent)',
+              }}
+            />
+          </div>
 
-        <h3 className="fw-800 mb-1">{callData.callerName}</h3>
-        <p className="text-primary fw-bold text-uppercase tracking-wider mb-4" style={{ fontSize: '0.8rem' }}>
-          Incoming {callData.type === 'video' ? 'Video Call' : 'Voice Call'}...
-        </p>
-
-        <div className="d-flex justify-content-center gap-4 mt-5">
-          <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
-            <Button 
-              variant="danger" 
-              className="rounded-circle p-0 d-flex align-items-center justify-content-center shadow-lg border-0"
-              style={{ width: '64px', height: '64px' }}
-              onClick={onDecline}
+          <div className="position-relative" style={{ zIndex: 1 }}>
+            <motion.div
+              animate={{ y: [0, -10, 0] }}
+              transition={{ repeat: Infinity, duration: 4 }}
+              className="mb-4"
             >
-              <span className="fs-3">📞</span>
-            </Button>
-            <small className="d-block mt-2 fw-bold opacity-75">Decline</small>
-          </motion.div>
+              <Image 
+                src={`https://ui-avatars.com/api/?name=${callData.callerName}&background=random&size=128`}
+                roundedCircle
+                className="shadow-2xl border border-3 border-white border-opacity-10"
+                width={140}
+                height={140}
+              />
+            </motion.div>
 
-          <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
-            <Button 
-              variant="success" 
-              className="rounded-circle p-0 d-flex align-items-center justify-content-center shadow-lg border-0"
-              style={{ width: '64px', height: '64px', background: 'linear-gradient(45deg, #28a745, #20c997)' }}
-              onClick={onAccept}
-            >
-              <span className="fs-3">{callData.type === 'video' ? '📹' : '📞'}</span>
-            </Button>
-            <small className="d-block mt-2 fw-bold opacity-75">Accept</small>
-          </motion.div>
+            <h2 className="text-white fw-900 mb-2 tracking-tight">{callData.callerName}</h2>
+            <div className="d-flex align-items-center justify-content-center gap-2 mb-5">
+              <span className="badge rounded-pill bg-primary bg-opacity-10 text-primary px-3 py-2 border border-primary border-opacity-25 text-uppercase tracking-widest small fw-bold">
+                {callData.type === 'video' ? '📹 Video Call' : '📞 Voice Call'}
+              </span>
+            </div>
+
+            <div className="d-flex justify-content-center gap-4">
+              <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                <Button 
+                  variant="danger" 
+                  className="rounded-circle p-0 d-flex align-items-center justify-content-center shadow-2xl border-0"
+                  style={{ 
+                    width: '75px', 
+                    height: '75px',
+                    background: 'linear-gradient(45deg, #ff416c, #ff4b2b)',
+                    boxShadow: '0 10px 30px rgba(255, 65, 108, 0.4)'
+                  }}
+                  onClick={onDecline}
+                >
+                  <span className="fs-2">✕</span>
+                </Button>
+                <small className="d-block mt-3 text-white opacity-50 fw-bold text-uppercase tracking-widest" style={{ fontSize: '0.65rem' }}>Decline</small>
+              </motion.div>
+
+              <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                <Button 
+                  variant="success" 
+                  className="rounded-circle p-0 d-flex align-items-center justify-content-center shadow-2xl border-0"
+                  style={{ 
+                    width: '75px', 
+                    height: '75px',
+                    background: 'linear-gradient(45deg, #00b09b, #96c93d)',
+                    boxShadow: '0 10px 30px rgba(0, 176, 155, 0.4)'
+                  }}
+                  onClick={onAccept}
+                >
+                  <span className="fs-2">✓</span>
+                </Button>
+                <small className="d-block mt-3 text-white opacity-50 fw-bold text-uppercase tracking-widest" style={{ fontSize: '0.65rem' }}>Accept</small>
+              </motion.div>
+            </div>
+          </div>
         </div>
-      </div>
-    </Modal>
+      </motion.div>
+    </AnimatePresence>
   );
 };
 

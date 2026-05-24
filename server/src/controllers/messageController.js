@@ -148,31 +148,44 @@ const getMessagesByConversation = async (req, res, next) => {
  */
 const sendMessage = async (req, res, next) => {
   try {
-    const { receiverId, content, messageType, mediaUrl, fileName } = req.body;
+    const { receiverId, conversationId, content, messageType, mediaUrl, fileName } = req.body;
     const senderId = req.user._id;
 
-    // التأكد إن الطرف التاني مش عامل بلوك أو أنا مش عامله بلوك (Full Block)
-    const receiver = await User.findById(receiverId);
-    if (!receiver) return res.status(404).json({ message: "User not found" });
+    let conversation;
+    
+    // لو باعت conversationId يبقى ده جروب أو محادثة قائمة
+    if (conversationId) {
+      conversation = await Conversation.findById(conversationId);
+      if (!conversation) return res.status(404).json({ message: "Conversation not found" });
+      
+      // التأكد إن اليوزر طرف في المحادثة
+      if (!conversation.participants.some(p => String(p) === String(senderId))) {
+        return res.status(403).json({ message: "You are not a member of this conversation" });
+      }
+    } else if (receiverId) {
+      // لو مش باعت conversationId بس باعت receiverId يبقى بنبدأ 1-on-1
+      const receiver = await User.findById(receiverId);
+      if (!receiver) return res.status(404).json({ message: "User not found" });
 
-    const isFullBlocked = receiver.blockedUsers.includes(senderId) || req.user.blockedUsers.includes(receiverId);
-    if (isFullBlocked) {
-      return res.status(403).json({ message: "Messaging is blocked between you and this user" });
-    }
+      const isFullBlocked = receiver.blockedUsers.includes(senderId) || req.user.blockedUsers.includes(receiverId);
+      if (isFullBlocked) {
+        return res.status(403).json({ message: "Messaging is blocked between you and this user" });
+      }
 
-    // بنتأكد إن في محادثة أو بنكريت واحدة.
-    const conversation = await ensureConversation(senderId, receiverId);
+      conversation = await ensureConversation(senderId, receiverId);
 
-    // التأكد من حظر الرسايل فقط (Message Block)
-    if (conversation.messageBlockedBy && conversation.messageBlockedBy.length > 0) {
-      return res.status(403).json({ message: "Messaging is temporarily blocked in this conversation" });
+      // التأكد من حظر الرسايل فقط (Message Block)
+      if (conversation.messageBlockedBy && conversation.messageBlockedBy.length > 0) {
+        return res.status(403).json({ message: "Messaging is temporarily blocked in this conversation" });
+      }
+    } else {
+      return res.status(400).json({ message: "Receiver ID or Conversation ID is required" });
     }
 
     // بنسيف الرسالة في الداتا بيز.
     const message = await Message.create({
       conversation: conversation._id,
       sender: senderId,
-      receiver: receiverId,
       content: content || "",
       messageType: messageType || "text",
       mediaUrl: mediaUrl || "",
@@ -183,29 +196,34 @@ const sendMessage = async (req, res, next) => {
     conversation.lastMessageAt = new Date();
     conversation.lastMessage = message._id;
     
-    // لو المحادثة كانت ممسوحة أو مؤرشفة للطرف التاني، بنرجعها نشطة تاني.
-    conversation.settings.forEach(s => {
-      if (String(s.user) === String(receiverId)) {
-        s.isArchived = false;
-        // لا نقوم بتصفير deletedAt لأننا نريد إخفاء الرسايل القديمة فقط
+    // تحديث الإعدادات لكل المشاركين
+    conversation.participants.forEach(participantId => {
+      let userSettings = conversation.settings.find(s => String(s.user) === String(participantId));
+      if (!userSettings) {
+        conversation.settings.push({ user: participantId, isArchived: false });
+      } else if (String(participantId) !== String(senderId)) {
+        userSettings.isArchived = false;
       }
     });
 
     await conversation.save();
 
-    // إرسال إشعار
-    if (String(receiverId) !== String(senderId)) {
-      await Notification.create({
-        recipient: receiverId,
+    // إرسال إشعارات لكل المشاركين (ما عدا الراسل)
+    const notificationPromises = conversation.participants
+      .filter(pId => String(pId) !== String(senderId))
+      .map(pId => Notification.create({
+        recipient: pId,
         sender: senderId,
         type: "message",
-        message: `${req.user.username} sent you a ${messageType || 'message'}`,
-      });
-    }
+        message: conversation.isGroup 
+          ? `New message in ${conversation.groupName}`
+          : `${req.user.username} sent you a ${messageType || 'message'}`,
+      }));
+    
+    await Promise.all(notificationPromises);
 
     const populated = await message.populate([
-      { path: "sender", select: "name username avatarUrl" },
-      { path: "receiver", select: "name username avatarUrl" }
+      { path: "sender", select: "name username avatarUrl" }
     ]);
 
     return res.status(201).json({ message: populated });
@@ -360,6 +378,152 @@ const deleteMessage = async (req, res, next) => {
   }
 };
 
+/**
+ * وظيفة إنشاء جروب شات جديد
+ */
+const createGroupConversation = async (req, res, next) => {
+  try {
+    const { name, participants, groupAvatar } = req.body;
+    const adminId = req.user._id;
+
+    if (!name || !participants || participants.length === 0) {
+      return res.status(400).json({ message: "Group name and participants are required" });
+    }
+
+    // إضافة الأدمن للمشاركين لو مش موجود
+    const allParticipants = [...new Set([...participants, String(adminId)])];
+
+    const conversation = await Conversation.create({
+      isGroup: true,
+      groupName: name,
+      groupAvatar: groupAvatar || "",
+      groupAdmin: adminId,
+      groupAdmins: [adminId],
+      participants: allParticipants,
+      settings: allParticipants.map(id => ({ user: id }))
+    });
+
+    const populated = await conversation.populate("participants", "name username avatarUrl");
+    
+    // إرسال رسالة ترحيبية
+    await Message.create({
+      conversation: conversation._id,
+      sender: adminId,
+      content: `Group "${name}" created by ${req.user.name}`,
+      messageType: "system"
+    });
+
+    return res.status(201).json({ conversation: populated });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * وظيفة إضافة أعضاء للجروب
+ */
+const addGroupMembers = async (req, res, next) => {
+  try {
+    const { conversationId } = req.params;
+    const { userIds } = req.body; // مصفوفة من الـ IDs
+    const adminId = req.user._id;
+
+    const conversation = await Conversation.findById(conversationId);
+    if (!conversation || !conversation.isGroup) {
+      return res.status(404).json({ message: "Group not found" });
+    }
+
+    // التأكد إن اللي بيضيف هو أدمن
+    if (!conversation.groupAdmins.some(id => String(id) === String(adminId))) {
+      return res.status(403).json({ message: "Only admins can add members" });
+    }
+
+    // إضافة الأعضاء الجدد (بدون تكرار)
+    userIds.forEach(id => {
+      if (!conversation.participants.some(p => String(p) === String(id))) {
+        conversation.participants.push(id);
+        conversation.settings.push({ user: id });
+      }
+    });
+
+    await conversation.save();
+    
+    const populated = await conversation.populate("participants", "name username avatarUrl");
+    return res.status(200).json({ conversation: populated });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * وظيفة حذف عضو من الجروب
+ */
+const removeGroupMember = async (req, res, next) => {
+  try {
+    const { conversationId, userId } = req.params;
+    const adminId = req.user._id;
+
+    const conversation = await Conversation.findById(conversationId);
+    if (!conversation || !conversation.isGroup) {
+      return res.status(404).json({ message: "Group not found" });
+    }
+
+    // التأكد إن اللي بيحذف هو أدمن، أو الشخص بيحذف نفسه (Leave)
+    const isAdmin = conversation.groupAdmins.some(id => String(id) === String(adminId));
+    const isSelf = String(userId) === String(adminId);
+
+    if (!isAdmin && !isSelf) {
+      return res.status(403).json({ message: "Access denied" });
+    }
+
+    // حذف العضو
+    conversation.participants = conversation.participants.filter(p => String(p) !== String(userId));
+    conversation.groupAdmins = conversation.groupAdmins.filter(p => String(p) !== String(userId));
+    conversation.settings = conversation.settings.filter(s => String(s.user) !== String(userId));
+
+    // لو الأدمر الأساسي خرج، بنعين حد تاني أدمن لو في ناس لسة
+    if (String(conversation.groupAdmin) === String(userId) && conversation.participants.length > 0) {
+      conversation.groupAdmin = conversation.participants[0];
+      if (!conversation.groupAdmins.includes(conversation.participants[0])) {
+        conversation.groupAdmins.push(conversation.participants[0]);
+      }
+    }
+
+    await conversation.save();
+    return res.status(200).json({ message: "Member removed successfully" });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * وظيفة ترقية عضو لأدمن
+ */
+const promoteToAdmin = async (req, res, next) => {
+  try {
+    const { conversationId, userId } = req.params;
+    const adminId = req.user._id;
+
+    const conversation = await Conversation.findById(conversationId);
+    if (!conversation || !conversation.isGroup) {
+      return res.status(404).json({ message: "Group not found" });
+    }
+
+    if (!conversation.groupAdmins.some(id => String(id) === String(adminId))) {
+      return res.status(403).json({ message: "Only admins can promote others" });
+    }
+
+    if (!conversation.groupAdmins.includes(userId)) {
+      conversation.groupAdmins.push(userId);
+    }
+
+    await conversation.save();
+    return res.status(200).json({ message: "User promoted to admin" });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = { 
   startConversationByUsername, 
   getMyConversations, 
@@ -369,5 +533,9 @@ module.exports = {
   deleteMessage,
   markMessagesAsRead,
   updateConversationSettings,
-  toggleMessageBlock
+  toggleMessageBlock,
+  createGroupConversation,
+  addGroupMembers,
+  removeGroupMember,
+  promoteToAdmin
 };

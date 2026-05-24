@@ -145,6 +145,57 @@ export const toggleMessageBlock = createAsyncThunk(
   }
 );
 
+/**
+ * وظائف الجروبات
+ */
+export const createGroup = createAsyncThunk(
+  "messages/createGroup",
+  async (groupData, { rejectWithValue }) => {
+    try {
+      const { data } = await api.post("/messages/groups", groupData);
+      return data.conversation;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || "Failed to create group");
+    }
+  }
+);
+
+export const addGroupMembers = createAsyncThunk(
+  "messages/addMembers",
+  async ({ conversationId, userIds }, { rejectWithValue }) => {
+    try {
+      const { data } = await api.post(`/messages/groups/${conversationId}/members`, { userIds });
+      return data.conversation;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || "Failed to add members");
+    }
+  }
+);
+
+export const removeGroupMember = createAsyncThunk(
+  "messages/removeMember",
+  async ({ conversationId, userId }, { rejectWithValue }) => {
+    try {
+      await api.delete(`/messages/groups/${conversationId}/members/${userId}`);
+      return { conversationId, userId };
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || "Failed to remove member");
+    }
+  }
+);
+
+export const promoteToAdmin = createAsyncThunk(
+  "messages/promoteAdmin",
+  async ({ conversationId, userId }, { rejectWithValue }) => {
+    try {
+      await api.put(`/messages/groups/${conversationId}/promote/${userId}`);
+      return { conversationId, userId };
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || "Failed to promote member");
+    }
+  }
+);
+
 const messagesSlice = createSlice({
   name: "messages",
   initialState,
@@ -210,6 +261,27 @@ const messagesSlice = createSlice({
         const index = state.conversations.findIndex(c => c._id === conversationId);
         if (index !== -1) {
           state.conversations[index] = conversation;
+        }
+      })
+      .addCase(createGroup.fulfilled, (state, action) => {
+        state.conversations.unshift(action.payload);
+        state.activeConversationId = action.payload._id;
+      })
+      .addCase(addGroupMembers.fulfilled, (state, action) => {
+        const index = state.conversations.findIndex(c => c._id === action.payload._id);
+        if (index !== -1) {
+          state.conversations[index] = action.payload;
+        }
+      })
+      .addCase(removeGroupMember.fulfilled, (state, action) => {
+        const { conversationId, userId } = action.payload;
+        const index = state.conversations.findIndex(c => c._id === conversationId);
+        if (index !== -1) {
+          state.conversations[index].participants = state.conversations[index].participants.filter(p => String(p._id || p) !== String(userId));
+        }
+        if (state.activeConversationId === conversationId && String(userId) === String(state.user?.id)) {
+           state.activeConversationId = null;
+           state.messages = [];
         }
       })
       .addMatcher(

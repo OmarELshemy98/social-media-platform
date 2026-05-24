@@ -62,51 +62,55 @@ const AppLayout = () => {
   // مراقبة الرسائل الجديدة في كل المحادثات
   useEffect(() => {
     if (!conversations || !user) return;
-    
-    const currentLastMessagesIds = conversations.map(c => c.lastMessage?._id).filter(Boolean).join(',');
 
-    // البحث في كل المحادثات عن أي دعوة مكالمة جديدة لم يتم التعامل معها
-    conversations.forEach(conv => {
-      const lastMsg = conv.lastMessage;
-      if (!lastMsg) return;
+    const currentLastMessagesIds = conversations
+      .map(c => c.lastMessage?._id || '')
+      .join(',');
 
-      const isCallInvite = lastMsg.content?.startsWith('[CALL_INVITE]:');
-      const isIncoming = String(lastMsg.sender?._id || lastMsg.sender) !== String(user?.id || user?._id);
-      const isNew = !handledCallsRef.current.has(lastMsg._id);
+    if (prevTotalMessages.current && prevTotalMessages.current !== currentLastMessagesIds) {
+      // هناك رسالة جديدة في مكان ما
+      const updatedConv = conversations.find(c => 
+        c.lastMessage?._id && !prevTotalMessages.current.includes(c.lastMessage._id)
+      );
 
-      if (isCallInvite && isIncoming && isNew) {
-        handledCallsRef.current.add(lastMsg._id);
-        const [_, roomID, type] = lastMsg.content.split(':');
-        const caller = conv.participants?.find(p => String(p._id) !== String(user?.id || user?._id));
+      if (updatedConv && updatedConv.lastMessage) {
+        const lastMsg = updatedConv.lastMessage;
+        const senderId = lastMsg.sender?._id || lastMsg.sender;
+        const isIncoming = String(senderId) !== String(user?.id || user?._id);
 
-        setIncomingCall({
-          roomID,
-          type,
-          callerName: caller?.username || 'Someone',
-          messageId: lastMsg._id
-        });
-      }
-    });
-
-    // تشغيل صوت الرسالة العادية لو مش في صفحة الرسائل
-    if (prevTotalMessages.current && currentLastMessagesIds !== prevTotalMessages.current) {
-      const updatedConv = conversations.find(c => c.lastMessage?._id && !prevTotalMessages.current.includes(c.lastMessage._id));
-      if (updatedConv && location.pathname !== '/messages') {
-        const isIncoming = String(updatedConv.lastMessage?.sender?._id || updatedConv.lastMessage?.sender) !== String(user?.id || user?._id);
-        if (isIncoming && !updatedConv.lastMessage?.content?.startsWith('[CALL_INVITE]:')) {
-          playSound("message_received");
+        if (isIncoming) {
+          if (lastMsg.content?.startsWith('[CALL_INVITE]:')) {
+            const [_, roomID, type, callerName] = lastMsg.content.split(':');
+            if (!handledCallsRef.current.has(roomID)) {
+              setIncomingCall({ roomID, type, callerName, conversationId: updatedConv._id });
+              handledCallsRef.current.add(roomID);
+            }
+          } else if (lastMsg.content?.startsWith('[CALL_END]:')) {
+             // لو في مكالمة جارية بنفس الـ roomID، نقفلها
+             const roomID = lastMsg.content.split(':')[1];
+             if (location.search.includes(`roomID=${roomID}`)) {
+                navigate('/messages'); // نرجع لصفحة الرسائل العادية
+                playSound('call_end');
+             }
+             if (incomingCall?.roomID === roomID) {
+                setIncomingCall(null);
+                stopSound('ringtone');
+             }
+          } else {
+            playSound("message_received");
+          }
         }
       }
     }
     prevTotalMessages.current = currentLastMessagesIds;
-  }, [conversations, user, location.pathname]);
+  }, [conversations, user, location.pathname, navigate, incomingCall]);
 
   const handleAcceptCall = () => {
     if (incomingCall) {
-      const { roomID, type } = incomingCall;
+      const { roomID, type, conversationId } = incomingCall;
       setIncomingCall(null);
       stopSound('ringtone');
-      navigate(`/messages?roomID=${roomID}&type=${type}`);
+      navigate(`/messages?roomID=${roomID}&type=${type}&conversationId=${conversationId}`);
     }
   };
 
