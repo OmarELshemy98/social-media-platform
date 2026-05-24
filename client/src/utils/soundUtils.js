@@ -16,7 +16,9 @@ const SOUND_URLS = {
   // صوت المسح أو الإغلاق
   delete: "https://assets.mixkit.co/active_storage/sfx/2357/2357-preview.mp3",
   // صوت النجاح (Success)
-  success: "https://assets.mixkit.co/active_storage/sfx/2351/2351-preview.mp3"
+  success: "https://assets.mixkit.co/active_storage/sfx/2351/2351-preview.mp3",
+  // صوت الاتصال (Calling)
+  calling: "https://assets.mixkit.co/active_storage/sfx/2359/2359-preview.mp3"
 };
 
 /**

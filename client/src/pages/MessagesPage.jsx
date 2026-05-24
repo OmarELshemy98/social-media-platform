@@ -9,6 +9,7 @@ import { Button, Card, Col, Form, Row, Spinner, Modal, Dropdown } from "react-bo
 import { useDispatch, useSelector } from "react-redux";
 import { useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
+import { v4 as uuidv4 } from 'uuid';
 // استيراد أوامر إدارة الرسائل.
 import { 
   fetchConversationMessages, 
@@ -23,6 +24,7 @@ import {
 } from "../features/messages/messagesSlice";
 import { uploadImage } from "../services/uploadService";
 import { playSound } from "../utils/soundUtils";
+import CallContainer from "../components/chat/CallContainer";
 
 const MessagesPage = () => {
   const dispatch = useDispatch();
@@ -35,6 +37,8 @@ const MessagesPage = () => {
   const [showNewChat, setShowNewChat] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   
+  // Call States
+  const [activeCall, setActiveCall] = useState(null); // { roomID, type }
   // Recording States
   const [isRecordingAudio, setIsRecordingAudio] = useState(false);
   const [isRecordingVideo, setIsRecordingVideo] = useState(false);
@@ -80,10 +84,17 @@ const MessagesPage = () => {
   useEffect(() => {
     if (messages.length > lastMessageCountRef.current) {
       const lastMsg = messages[messages.length - 1];
+      const isMine = String(lastMsg.sender?._id) === String(user.id || user._id);
+      
       // لو الرسالة جاية من حد تاني مش مني
-      if (lastMsg && String(lastMsg.sender?._id) !== String(user.id || user._id)) {
-        playSound("message_received");
-      } else if (lastMsg && String(lastMsg.sender?._id) === String(user.id || user._id)) {
+      if (lastMsg && !isMine) {
+        // لو مكالمة، نشغل صوت رنين
+        if (lastMsg.content?.startsWith('[CALL_INVITE]:')) {
+          playSound("calling");
+        } else {
+          playSound("message_received");
+        }
+      } else if (lastMsg && isMine) {
         // لو أنا اللي باعت الرسالة
         playSound("message_sent");
       }
@@ -97,7 +108,7 @@ const MessagesPage = () => {
 
     const interval = setInterval(() => {
       dispatch(fetchConversationMessages(activeConversationId));
-    }, 8000);
+    }, 3000); // تقليل الوقت لـ 3 ثواني بدلاً من 8 لسرعة ظهور الرسائل
 
     return () => clearInterval(interval);
   }, [dispatch, activeConversationId, user]);
@@ -264,6 +275,24 @@ const MessagesPage = () => {
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
+  const initiateCall = (type) => {
+    if (!otherParticipant?._id) return;
+    
+    const roomID = uuidv4();
+    const callMsg = `[CALL_INVITE]:${roomID}:${type}`;
+    
+    // إرسال رسالة دعوة للمكالمة
+    dispatch(sendMessage({ 
+      receiverId: otherParticipant._id, 
+      content: callMsg, 
+      messageType: "text" 
+    }));
+
+    // فتح واجهة المكالمة عند المتصل
+    setActiveCall({ roomID, type });
+    playSound('calling');
+  };
+
   const handleFileUpload = async (file, forcedType = null) => {
     if (!file || !otherParticipant?._id) return;
     setIsUploading(true);
@@ -423,37 +452,62 @@ const MessagesPage = () => {
                 )}
               </div>
 
-              {activeConversation && (
-                <Dropdown align="end">
-                  <Dropdown.Toggle variant="link" className="text-dark p-0 no-caret shadow-none fs-5">
-                    ⋮
-                  </Dropdown.Toggle>
-                  <Dropdown.Menu className="border-0 shadow-lg p-2 rounded-4" style={{ minWidth: '180px' }}>
-                    <Dropdown.Item className="rounded-3 py-2 small fw-bold" onClick={() => dispatch(updateConversationSettings({ conversationId: activeConversation._id, action: activeConversation.settings?.find(s => s.user === user.id)?.isPinned ? 'unpin' : 'pin' }))}>
-                      {activeConversation.settings?.find(s => s.user === user.id)?.isPinned ? "📌 Unpin" : "📍 Pin Chat"}
-                    </Dropdown.Item>
-                    <Dropdown.Item className="rounded-3 py-2 small fw-bold" onClick={() => dispatch(updateConversationSettings({ conversationId: activeConversation._id, action: activeConversation.settings?.find(s => s.user === user.id)?.isMuted ? 'unmute' : 'mute' }))}>
-                      {activeConversation.settings?.find(s => s.user === user.id)?.isMuted ? "🔊 Unmute" : "🔕 Mute Notifications"}
-                    </Dropdown.Item>
-                    <Dropdown.Item className="rounded-3 py-2 small fw-bold" onClick={() => dispatch(updateConversationSettings({ conversationId: activeConversation._id, action: 'archive' }))}>
-                      📥 Archive
-                    </Dropdown.Item>
-                    <Dropdown.Divider />
-                    <Dropdown.Item className="rounded-3 py-2 small fw-bold text-warning" onClick={() => dispatch(toggleMessageBlock(activeConversation._id))}>
-                      🚫 {activeConversation.messageBlockedBy?.includes(user.id || user._id) ? "Unblock Messages" : "Block Messages"}
-                    </Dropdown.Item>
-                    <Dropdown.Item className="rounded-3 py-2 small fw-bold text-danger" onClick={() => {
-                      if(window.confirm("Delete entire conversation? This cannot be undone.")) {
-                        dispatch(updateConversationSettings({ conversationId: activeConversation._id, action: 'delete' }));
-                      }
-                    }}>
-                      🗑️ Delete Chat
-                    </Dropdown.Item>
-                  </Dropdown.Menu>
-                </Dropdown>
-              )}
+              <div className="d-flex align-items-center gap-2">
+                {otherParticipant && !activeConversation?.messageBlockedBy?.length && (
+                  <>
+                    <Button 
+                      variant="light" 
+                      className="rounded-circle border-0 shadow-sm p-0 d-flex align-items-center justify-content-center hover-scale"
+                      style={{ width: '36px', height: '36px', backgroundColor: 'rgba(var(--bs-primary-rgb), 0.1)', color: 'var(--bs-primary)' }}
+                      onClick={() => initiateCall('voice')}
+                      title="Voice Call"
+                    >
+                      📞
+                    </Button>
+                    <Button 
+                      variant="light" 
+                      className="rounded-circle border-0 shadow-sm p-0 d-flex align-items-center justify-content-center hover-scale"
+                      style={{ width: '36px', height: '36px', backgroundColor: 'rgba(var(--bs-primary-rgb), 0.1)', color: 'var(--bs-primary)' }}
+                      onClick={() => initiateCall('video')}
+                      title="Video Call"
+                    >
+                      📹
+                    </Button>
+                  </>
+                )}
+
+                {activeConversation && (
+                  <Dropdown align="end">
+                    <Dropdown.Toggle variant="link" className="text-dark p-0 no-caret shadow-none fs-5">
+                      ⋮
+                    </Dropdown.Toggle>
+                    <Dropdown.Menu className="border-0 shadow-lg p-2 rounded-4" style={{ minWidth: '180px' }}>
+                      <Dropdown.Item className="rounded-3 py-2 small fw-bold" onClick={() => dispatch(updateConversationSettings({ conversationId: activeConversation._id, action: activeConversation.settings?.find(s => s.user === user.id)?.isPinned ? 'unpin' : 'pin' }))}>
+                        {activeConversation.settings?.find(s => s.user === user.id)?.isPinned ? "📌 Unpin" : "📍 Pin Chat"}
+                      </Dropdown.Item>
+                      <Dropdown.Item className="rounded-3 py-2 small fw-bold" onClick={() => dispatch(updateConversationSettings({ conversationId: activeConversation._id, action: activeConversation.settings?.find(s => s.user === user.id)?.isMuted ? 'unmute' : 'mute' }))}>
+                        {activeConversation.settings?.find(s => s.user === user.id)?.isMuted ? "🔊 Unmute" : "🔕 Mute Notifications"}
+                      </Dropdown.Item>
+                      <Dropdown.Item className="rounded-3 py-2 small fw-bold" onClick={() => dispatch(updateConversationSettings({ conversationId: activeConversation._id, action: 'archive' }))}>
+                        📥 Archive
+                      </Dropdown.Item>
+                      <Dropdown.Divider />
+                      <Dropdown.Item className="rounded-3 py-2 small fw-bold text-warning" onClick={() => dispatch(toggleMessageBlock(activeConversation._id))}>
+                        🚫 {activeConversation.messageBlockedBy?.includes(user.id || user._id) ? "Unblock Messages" : "Block Messages"}
+                      </Dropdown.Item>
+                      <Dropdown.Item className="rounded-3 py-2 small fw-bold text-danger" onClick={() => {
+                        if(window.confirm("Delete entire conversation? This cannot be undone.")) {
+                          dispatch(updateConversationSettings({ conversationId: activeConversation._id, action: 'delete' }));
+                        }
+                      }}>
+                        🗑️ Delete Chat
+                      </Dropdown.Item>
+                    </Dropdown.Menu>
+                  </Dropdown>
+                )}
+              </div>
             </div>
-            
+
             {/* Messages Area */}
             <div className="messages-box flex-grow-1 p-4 overflow-auto" style={{ maxHeight: '60vh' }}>
               {!activeConversationId ? (
@@ -530,8 +584,57 @@ const MessagesPage = () => {
                             <>
                               {message.messageType === "text" && (
                                 <div className="chat-content">
-                                  {message.content}
-                                  {message.isEdited && <span className="ms-2 opacity-50" style={{ fontSize: '0.6rem' }}>(edited)</span>}
+                                  {message.content.startsWith('[CALL_INVITE]:') ? (
+                                    <div className="call-invite-bubble p-3 rounded-4" style={{ background: isMine ? 'rgba(255,255,255,0.1)' : 'rgba(var(--bs-primary-rgb), 0.1)', border: '1px solid rgba(255,255,255,0.2)' }}>
+                                      <div className="d-flex align-items-center gap-3 mb-3">
+                                        <div className="call-icon-animate fs-2">
+                                          {message.content.split(':')[2] === 'video' ? '📹' : '📞'}
+                                        </div>
+                                        <div className="flex-grow-1">
+                                          <div className="fw-800 small text-uppercase tracking-wider">
+                                            {message.content.split(':')[2] === 'video' ? 'Video Call' : 'Voice Call'}
+                                          </div>
+                                          <div className="x-small opacity-75 fw-semibold">
+                                            {isMine ? 'Waiting for answer...' : 'Incoming Call...'}
+                                          </div>
+                                        </div>
+                                      </div>
+                                      <div className="d-flex gap-2">
+                                        {!isMine && (
+                                          <Button 
+                                            variant="success" 
+                                            size="sm" 
+                                            className="flex-grow-1 rounded-pill fw-800 shadow-sm py-2 border-0"
+                                            style={{ background: 'linear-gradient(45deg, #28a745, #20c997)' }}
+                                            onClick={() => {
+                                              const [_, roomID, type] = message.content.split(':');
+                                              setActiveCall({ roomID, type });
+                                            }}
+                                          >
+                                            Answer Call
+                                          </Button>
+                                        )}
+                                        {isMine && (
+                                          <Button 
+                                            variant="outline-light" 
+                                            size="sm" 
+                                            className="flex-grow-1 rounded-pill fw-800 py-2 border-opacity-25"
+                                            onClick={() => {
+                                              const [_, roomID, type] = message.content.split(':');
+                                              setActiveCall({ roomID, type });
+                                            }}
+                                          >
+                                            Rejoin Call
+                                          </Button>
+                                        )}
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <>
+                                      {message.content}
+                                      {message.isEdited && <span className="ms-2 opacity-50" style={{ fontSize: '0.6rem' }}>(edited)</span>}
+                                    </>
+                                  )}
                                 </div>
                               )}
                               
@@ -733,6 +836,18 @@ const MessagesPage = () => {
         .hover-opacity-100:hover {
           opacity: 1 !important;
         }
+        .call-icon-animate {
+          animation: ring 1.5s infinite ease-in-out;
+        }
+        @keyframes ring {
+          0% { transform: scale(1) rotate(0); }
+          10% { transform: scale(1.1) rotate(-10deg); }
+          20% { transform: scale(1.1) rotate(10deg); }
+          30% { transform: scale(1.1) rotate(-10deg); }
+          40% { transform: scale(1.1) rotate(10deg); }
+          50% { transform: scale(1) rotate(0); }
+          100% { transform: scale(1) rotate(0); }
+        }
         .play-btn-circle {
           width: 35px;
           height: 35px;
@@ -773,6 +888,16 @@ const MessagesPage = () => {
         .audio-wave-sim span:nth-child(4) { animation-delay: 0.3s; }
         .audio-wave-sim span:nth-child(5) { animation-delay: 0.4s; }
       `}</style>
+      {/* Call Modal/Container */}
+      {activeCall && (
+        <CallContainer 
+          roomID={activeCall.roomID}
+          callType={activeCall.type}
+          userID={user.id || user._id}
+          userName={user.username}
+          onLeave={() => setActiveCall(null)}
+        />
+      )}
     </Row>
   );
 };

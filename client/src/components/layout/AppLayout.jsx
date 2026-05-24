@@ -14,6 +14,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { logout } from "../../features/auth/authSlice";
 import { toggleTheme } from "../../features/theme/themeSlice";
 import { fetchNotifications } from "../../features/notifications/notificationsSlice";
+import { fetchConversations } from "../../features/messages/messagesSlice";
 import { useRef } from "react";
 import { playSound } from "../../utils/soundUtils";
 
@@ -24,17 +25,24 @@ const AppLayout = () => {
   const { user } = useSelector((state) => state.auth);
   const { mode } = useSelector((state) => state.theme);
   const { unreadCount } = useSelector((state) => state.notifications);
+  const { conversations } = useSelector((state) => state.messages);
   
-  // مرجع لتتبع عدد الإشعارات السابقة
+  // مرجع لتتبع عدد الإشعارات والرسائل السابقة
   const prevUnreadCount = useRef(unreadCount);
+  const prevTotalMessages = useRef(0);
 
   useEffect(() => {
     if (!user) return;
     
+    // جلب البيانات فوراً
     dispatch(fetchNotifications());
+    dispatch(fetchConversations());
+
+    // تحديث دوري كل 5 ثواني
     const interval = setInterval(() => {
       dispatch(fetchNotifications());
-    }, 15000);
+      dispatch(fetchConversations());
+    }, 5000);
     return () => clearInterval(interval);
   }, [dispatch, user]);
 
@@ -45,6 +53,34 @@ const AppLayout = () => {
     }
     prevUnreadCount.current = unreadCount;
   }, [unreadCount]);
+
+  // مراقبة الرسائل الجديدة في كل المحادثات
+  useEffect(() => {
+    if (!conversations) return;
+    
+    // حساب إجمالي الرسائل غير المقروءة أو آخر رسالة
+    const totalUnread = conversations.reduce((acc, conv) => {
+      const isLastMine = String(conv.lastMessage?.sender) === String(user?.id || user?._id);
+      // لو آخر رسالة مش مني ومنتظر قراءتها (تقريباً)
+      return acc + (conv.lastMessage && !isLastMine ? 1 : 0);
+    }, 0);
+
+    // إذا زاد عدد المحادثات التي تحتوي على رسائل جديدة
+    // ملاحظة: هذا منطق تقريبي لأننا لا نملك حقل unreadCount صريح في الـ conversation حالياً
+    // سنعتمد على تغير الـ ID الخاص بآخر رسالة في أي محادثة
+    const currentLastMessagesIds = conversations.map(c => c.lastMessage?._id).filter(Boolean).join(',');
+    if (prevTotalMessages.current && currentLastMessagesIds !== prevTotalMessages.current) {
+      // التأكد أن آخر رسالة في المحادثة المحدثة ليست مني
+      const updatedConv = conversations.find(c => c.lastMessage?._id && !prevTotalMessages.current.includes(c.lastMessage._id));
+      if (updatedConv && String(updatedConv.lastMessage?.sender) !== String(user?.id || user?._id)) {
+        // تشغيل الصوت فقط لو مش في صفحة الرسائل (لأن صفحة الرسائل بتشغل صوتها الخاص)
+        if (location.pathname !== '/messages') {
+          playSound("message_received");
+        }
+      }
+    }
+    prevTotalMessages.current = currentLastMessagesIds;
+  }, [conversations, user, location.pathname]);
 
   const handleLogout = () => {
     dispatch(logout());

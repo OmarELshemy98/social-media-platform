@@ -13,6 +13,7 @@ const {
   getCurrentUser,
   forgotPassword,
   resetPassword,
+  generateAgoraToken,
 } = require("../controllers/authController");
 const { protect } = require("../middlewares/authMiddleware");
 const validateRequest = require("../middlewares/validateRequest");
@@ -38,5 +39,8 @@ router.get("/me", protect, getCurrentUser);
 // مسارات استعادة كلمة المرور
 router.post("/forgot-password", forgotPassword);
 router.put("/reset-password/:resetToken", resetPassword);
+
+// مسار توليد توكن Agora (محمي)
+router.get("/agora-token", protect, generateAgoraToken);
 
 module.exports = router;

@@ -19,6 +19,7 @@ const { sendWelcomeEmail, sendResetPasswordEmail } = require("../config/mailer")
 // مكتبة crypto: موجودة في Node.js بنستخدمها عشان نطلع أكواد عشوائية وسرية.
 const crypto = require("crypto");
 const { OAuth2Client } = require("google-auth-library");
+const { RtcTokenBuilder, RtcRole } = require('agora-token');
 
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
@@ -316,4 +317,52 @@ const resetPassword = async (req, res, next) => {
   }
 };
 
-module.exports = { registerUser, loginUser, googleAuth, getCurrentUser, forgotPassword, resetPassword };
+/**
+ * توليد توكن أمني لمكالمات Agora
+ */
+const generateAgoraToken = async (req, res, next) => {
+  try {
+    const { channelName } = req.query;
+    if (!channelName) {
+      return res.status(400).json({ message: "Channel name is required" });
+    }
+
+    const appId = process.env.AGORA_APP_ID;
+    const appCertificate = process.env.AGORA_APP_CERTIFICATE;
+    
+    if (!appId || !appCertificate) {
+      return res.status(500).json({ message: "Agora configuration missing on server" });
+    }
+
+    const uid = 0; // نستخدم 0 للسماح لأي مستخدم بالانضمام
+    const role = RtcRole.PUBLISHER;
+
+    const expirationTimeInSeconds = 3600; // صلاحية التوكن ساعة واحدة
+    const currentTimestamp = Math.floor(Date.now() / 1000);
+    const privilegeExpiredTs = currentTimestamp + expirationTimeInSeconds;
+
+    // بناء التوكن باستخدام الـ App ID والـ Certificate
+    const token = RtcTokenBuilder.buildTokenWithUid(
+      appId,
+      appCertificate,
+      channelName,
+      uid,
+      role,
+      privilegeExpiredTs
+    );
+
+    res.status(200).json({ token });
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = { 
+  registerUser, 
+  loginUser, 
+  googleAuth, 
+  getCurrentUser, 
+  forgotPassword, 
+  resetPassword,
+  generateAgoraToken
+};
