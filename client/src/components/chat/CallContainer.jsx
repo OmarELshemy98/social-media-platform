@@ -4,9 +4,13 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import AgoraUIKit from 'agora-react-uikit';
+import AgoraUIKit, { layout } from 'agora-react-uikit';
 import { Button, Alert, Spinner } from 'react-bootstrap';
 import api from '../../services/api';
+import AgoraRTC from 'agora-rtc-sdk-ng';
+
+// تقليل الـ Logs الخاصة بـ Agora في الكونسول
+AgoraRTC.setLogLevel(3); // 3 يعني إظهار الأخطاء الحرجة فقط
 
 const CallContainer = ({ roomID, userID, onLeave, callType = 'video' }) => {
   const [inCall, setInCall] = useState(false);
@@ -27,7 +31,7 @@ const CallContainer = ({ roomID, userID, onLeave, callType = 'video' }) => {
     const fetchTokenAndJoin = async () => {
       try {
         setLoading(true);
-        // طلب التوكن من السيرفر الخاص بنا
+        // طلب التوكن من السيرفر (RTC فقط لتجنب تعقيدات الـ RTM)
         const { data } = await api.get(`/auth/agora-token?channelName=${roomID}`);
         setToken(data.token);
         setInCall(true);
@@ -46,7 +50,7 @@ const CallContainer = ({ roomID, userID, onLeave, callType = 'video' }) => {
     return (
       <div className="call-container-wrapper" style={containerStyle}>
         <Spinner animation="border" variant="primary" className="mb-3" />
-        <h5 className="text-white">Securing Call Line...</h5>
+        <h5 className="text-white">Connecting HD Line...</h5>
       </div>
     );
   }
@@ -70,9 +74,11 @@ const CallContainer = ({ roomID, userID, onLeave, callType = 'video' }) => {
   const rtcProps = {
     appId: appId,
     channel: roomID,
-    token: token, // استخدام التوكن القادم من السيرفر
+    token: token,
     uid: 0,
     callActive: inCall,
+    layout: layout.grid, // استخدام تقسيم الشبكة لتقليل أخطاء الـ Rendering
+    enableScreensharing: true,
   };
 
   const callbacks = {
@@ -82,7 +88,6 @@ const CallContainer = ({ roomID, userID, onLeave, callType = 'video' }) => {
     },
   };
 
-  // إعدادات الواجهة
   const styleProps = {
     containerStyle: {
       width: '100vw',
@@ -92,10 +97,11 @@ const CallContainer = ({ roomID, userID, onLeave, callType = 'video' }) => {
       backgroundColor: '#1a1a1a',
     },
     localBtnContainer: {
-      backgroundColor: 'rgba(0,0,0,0.5)',
-      borderRadius: '20px',
-      padding: '10px',
-      bottom: '30px',
+      backgroundColor: 'rgba(0,0,0,0.6)',
+      borderRadius: '30px',
+      padding: '12px',
+      bottom: '40px',
+      border: '1px solid rgba(255,255,255,0.1)'
     },
     maxViewRemoteBtnContainer: {
       top: '30px',
@@ -108,13 +114,15 @@ const CallContainer = ({ roomID, userID, onLeave, callType = 'video' }) => {
       <div className="position-absolute top-0 end-0 p-4" style={{ zIndex: 10000 }}>
         <Button 
           variant="danger" 
-          className="rounded-pill px-4 fw-bold shadow-lg"
+          className="rounded-pill px-4 fw-bold shadow-lg border-0"
+          style={{ background: 'linear-gradient(45deg, #ff416c, #ff4b2b)' }}
           onClick={onLeave}
         >
           ✕ End Call
         </Button>
       </div>
 
+      {/* تعطيل الـ RTM يدوياً عبر عدم تمرير rtmProps لتقليل الأخطاء */}
       <AgoraUIKit 
         rtcProps={rtcProps} 
         callbacks={callbacks} 
