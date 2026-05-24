@@ -77,8 +77,10 @@ const CallContainer = ({ roomID, userID, onLeave, callType = 'video' }) => {
     token: token,
     uid: 0,
     callActive: inCall,
-    layout: layout.grid, // استخدام تقسيم الشبكة لتقليل أخطاء الـ Rendering
+    layout: layout.grid,
     enableScreensharing: true,
+    // إجبار الكاميرا على الإغلاق لو كانت مكالمة صوتية فقط
+    videoState: callType === 'video' ? true : false,
   };
 
   const callbacks = {

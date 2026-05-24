@@ -75,6 +75,10 @@ const getMyConversations = async (req, res, next) => {
       participants: userId,
     })
       .populate("participants", "name username avatarUrl")
+      .populate({
+        path: "lastMessage",
+        populate: { path: "sender", select: "name username" }
+      })
       .sort({ lastMessageAt: -1 });
 
     // تصفية المحادثات:
@@ -175,8 +179,9 @@ const sendMessage = async (req, res, next) => {
       fileName: fileName || "",
     });
 
-    // بنحدث وقت "آخر رسالة" في المحادثة.
+    // بنحدث وقت "آخر رسالة" في المحادثة ونسجل الـ ID بتاعها.
     conversation.lastMessageAt = new Date();
+    conversation.lastMessage = message._id;
     
     // لو المحادثة كانت ممسوحة أو مؤرشفة للطرف التاني، بنرجعها نشطة تاني.
     conversation.settings.forEach(s => {

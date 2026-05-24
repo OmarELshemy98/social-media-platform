@@ -17,15 +17,23 @@ const SOUND_URLS = {
   delete: "https://assets.mixkit.co/active_storage/sfx/2357/2357-preview.mp3",
   // صوت النجاح (Success)
   success: "https://assets.mixkit.co/active_storage/sfx/2351/2351-preview.mp3",
-  // صوت الاتصال (Calling)
-  calling: "https://assets.mixkit.co/active_storage/sfx/2359/2359-preview.mp3"
+  // صوت الرنين للمكالمة الواردة (Incoming Call)
+  ringtone: "https://assets.mixkit.co/active_storage/sfx/1359/1359-preview.mp3",
+  // صوت انتهاء المكالمة
+  call_end: "https://assets.mixkit.co/active_storage/sfx/2358/2358-preview.mp3",
+  // صوت الاتصال (Waiting)
+  calling: "https://assets.mixkit.co/active_storage/sfx/1358/1358-preview.mp3"
 };
+
+// كائنات لتخزين الأصوات التي تعمل حالياً للتحكم بها
+const activeSounds = {};
 
 /**
  * وظيفة تشغيل الصوت
  * @param {string} soundName - اسم الصوت من القائمة اللي فوق
+ * @param {boolean} loop - هل يتم تكرار الصوت؟
  */
-export const playSound = (soundName) => {
+export const playSound = (soundName, loop = false) => {
   // التأكد إن اليوزر مش قافل الأصوات من إعدادات المتصفح أو إعدادات الموقع (مستقبلاً)
   const isSoundEnabled = localStorage.getItem("sound_enabled") !== "false";
   
@@ -33,12 +41,29 @@ export const playSound = (soundName) => {
     try {
       const audio = new Audio(SOUND_URLS[soundName]);
       audio.volume = 0.5; // تحديد مستوى الصوت عشان ميبقاش مزعج
+      audio.loop = loop;
       audio.play().catch(e => {
         // بنعمل catch عشان المتصفحات ساعات بتمنع الصوت لو اليوزر متفاعلش مع الصفحة
         console.warn("Audio playback blocked or failed:", e.message);
       });
+
+      // حفظ الصوت في قائمة النشطين للتحكم به لاحقاً
+      activeSounds[soundName] = audio;
+      return audio;
     } catch (err) {
       console.error("Sound system error:", err);
     }
+  }
+};
+
+/**
+ * وظيفة إيقاف الصوت
+ * @param {string} soundName - اسم الصوت المراد إيقافه
+ */
+export const stopSound = (soundName) => {
+  if (activeSounds[soundName]) {
+    activeSounds[soundName].pause();
+    activeSounds[soundName].currentTime = 0;
+    delete activeSounds[soundName];
   }
 };

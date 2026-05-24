@@ -15,8 +15,9 @@ import { logout } from "../../features/auth/authSlice";
 import { toggleTheme } from "../../features/theme/themeSlice";
 import { fetchNotifications } from "../../features/notifications/notificationsSlice";
 import { fetchConversations } from "../../features/messages/messagesSlice";
-import { useRef } from "react";
-import { playSound } from "../../utils/soundUtils";
+import { useRef, useState } from "react";
+import { playSound, stopSound } from "../../utils/soundUtils";
+import IncomingCallModal from "../chat/IncomingCallModal";
 
 const AppLayout = () => {
   const dispatch = useDispatch();
@@ -27,9 +28,13 @@ const AppLayout = () => {
   const { unreadCount } = useSelector((state) => state.notifications);
   const { conversations } = useSelector((state) => state.messages);
   
-  // مرجع لتتبع عدد الإشعارات والرسائل السابقة
+  // Call State
+  const [incomingCall, setIncomingCall] = useState(null);
+
+  // مرجع لتتبع المكالمات التي تم عرضها بالفعل
+  const handledCallsRef = useRef(new Set());
   const prevUnreadCount = useRef(unreadCount);
-  const prevTotalMessages = useRef(0);
+  const prevTotalMessages = useRef("");
 
   useEffect(() => {
     if (!user) return;
@@ -38,11 +43,11 @@ const AppLayout = () => {
     dispatch(fetchNotifications());
     dispatch(fetchConversations());
 
-    // تحديث دوري كل 5 ثواني
+    // تحديث دوري كل 4 ثواني (أسرع قليلاً للمكالمات)
     const interval = setInterval(() => {
       dispatch(fetchNotifications());
       dispatch(fetchConversations());
-    }, 5000);
+    }, 4000);
     return () => clearInterval(interval);
   }, [dispatch, user]);
 
@@ -56,31 +61,60 @@ const AppLayout = () => {
 
   // مراقبة الرسائل الجديدة في كل المحادثات
   useEffect(() => {
-    if (!conversations) return;
+    if (!conversations || !user) return;
     
-    // حساب إجمالي الرسائل غير المقروءة أو آخر رسالة
-    const totalUnread = conversations.reduce((acc, conv) => {
-      const isLastMine = String(conv.lastMessage?.sender) === String(user?.id || user?._id);
-      // لو آخر رسالة مش مني ومنتظر قراءتها (تقريباً)
-      return acc + (conv.lastMessage && !isLastMine ? 1 : 0);
-    }, 0);
-
-    // إذا زاد عدد المحادثات التي تحتوي على رسائل جديدة
-    // ملاحظة: هذا منطق تقريبي لأننا لا نملك حقل unreadCount صريح في الـ conversation حالياً
-    // سنعتمد على تغير الـ ID الخاص بآخر رسالة في أي محادثة
     const currentLastMessagesIds = conversations.map(c => c.lastMessage?._id).filter(Boolean).join(',');
+
+    // البحث في كل المحادثات عن أي دعوة مكالمة جديدة لم يتم التعامل معها
+    conversations.forEach(conv => {
+      const lastMsg = conv.lastMessage;
+      if (!lastMsg) return;
+
+      const isCallInvite = lastMsg.content?.startsWith('[CALL_INVITE]:');
+      const isIncoming = String(lastMsg.sender?._id || lastMsg.sender) !== String(user?.id || user?._id);
+      const isNew = !handledCallsRef.current.has(lastMsg._id);
+
+      if (isCallInvite && isIncoming && isNew) {
+        handledCallsRef.current.add(lastMsg._id);
+        const [_, roomID, type] = lastMsg.content.split(':');
+        const caller = conv.participants?.find(p => String(p._id) !== String(user?.id || user?._id));
+
+        setIncomingCall({
+          roomID,
+          type,
+          callerName: caller?.username || 'Someone',
+          messageId: lastMsg._id
+        });
+      }
+    });
+
+    // تشغيل صوت الرسالة العادية لو مش في صفحة الرسائل
     if (prevTotalMessages.current && currentLastMessagesIds !== prevTotalMessages.current) {
-      // التأكد أن آخر رسالة في المحادثة المحدثة ليست مني
       const updatedConv = conversations.find(c => c.lastMessage?._id && !prevTotalMessages.current.includes(c.lastMessage._id));
-      if (updatedConv && String(updatedConv.lastMessage?.sender) !== String(user?.id || user?._id)) {
-        // تشغيل الصوت فقط لو مش في صفحة الرسائل (لأن صفحة الرسائل بتشغل صوتها الخاص)
-        if (location.pathname !== '/messages') {
+      if (updatedConv && location.pathname !== '/messages') {
+        const isIncoming = String(updatedConv.lastMessage?.sender?._id || updatedConv.lastMessage?.sender) !== String(user?.id || user?._id);
+        if (isIncoming && !updatedConv.lastMessage?.content?.startsWith('[CALL_INVITE]:')) {
           playSound("message_received");
         }
       }
     }
     prevTotalMessages.current = currentLastMessagesIds;
   }, [conversations, user, location.pathname]);
+
+  const handleAcceptCall = () => {
+    if (incomingCall) {
+      const { roomID, type } = incomingCall;
+      setIncomingCall(null);
+      stopSound('ringtone');
+      navigate(`/messages?roomID=${roomID}&type=${type}`);
+    }
+  };
+
+  const handleDeclineCall = () => {
+    setIncomingCall(null);
+    stopSound('ringtone');
+    playSound('call_end');
+  };
 
   const handleLogout = () => {
     dispatch(logout());
@@ -148,6 +182,18 @@ const AppLayout = () => {
           </Navbar.Collapse>
         </Container>
       </Navbar>
+
+      {/* التنبيه المنبثق للمكالمة الواردة */}
+      <AnimatePresence>
+        {incomingCall && (
+          <IncomingCallModal 
+            callData={incomingCall}
+            onAccept={handleAcceptCall}
+            onDecline={handleDeclineCall}
+          />
+        )}
+      </AnimatePresence>
+
       <Container className="py-4">
         <AnimatePresence mode="wait">
           <motion.div

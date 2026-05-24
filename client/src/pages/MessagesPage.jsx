@@ -79,23 +79,34 @@ const MessagesPage = () => {
     }
   }, [dispatch, usernameParam]);
 
-  // مراقبة الرسايل الجديدة لتشغيل الصوت
+  useEffect(() => {
+    const roomID = searchParams.get("roomID");
+    const type = searchParams.get("type");
+    if (roomID && type) {
+      setActiveCall({ roomID, type });
+      // تنظيف الروابط بعد الاستخدام
+      window.history.replaceState({}, '', '/messages');
+    }
+  }, [searchParams]);
+
+  // مراقبة الرسايل الجديدة لتشغيل الصوت وإغلاق المكالمة
   const lastMessageCountRef = useRef(messages.length);
   useEffect(() => {
     if (messages.length > lastMessageCountRef.current) {
       const lastMsg = messages[messages.length - 1];
-      const isMine = String(lastMsg.sender?._id) === String(user.id || user._id);
+      const isMine = String(lastMsg.sender?._id || lastMsg.sender) === String(user.id || user._id);
       
-      // لو الرسالة جاية من حد تاني مش مني
       if (lastMsg && !isMine) {
-        // لو مكالمة، نشغل صوت رنين
-        if (lastMsg.content?.startsWith('[CALL_INVITE]:')) {
+        // لو رسالة إنهاء مكالمة، نقفل الـ CallContainer فوراً
+        if (lastMsg.content?.startsWith('[CALL_END]:')) {
+          setActiveCall(null);
+          playSound('call_end');
+        } else if (lastMsg.content?.startsWith('[CALL_INVITE]:')) {
           playSound("calling");
         } else {
           playSound("message_received");
         }
       } else if (lastMsg && isMine) {
-        // لو أنا اللي باعت الرسالة
         playSound("message_sent");
       }
     }
@@ -291,6 +302,19 @@ const MessagesPage = () => {
     // فتح واجهة المكالمة عند المتصل
     setActiveCall({ roomID, type });
     playSound('calling');
+  };
+
+  const endActiveCall = () => {
+    if (activeCall && otherParticipant?._id) {
+      const endMsg = `[CALL_END]:${activeCall.roomID}`;
+      dispatch(sendMessage({ 
+        receiverId: otherParticipant._id, 
+        content: endMsg, 
+        messageType: "text" 
+      }));
+    }
+    setActiveCall(null);
+    playSound('call_end');
   };
 
   const handleFileUpload = async (file, forcedType = null) => {
@@ -629,6 +653,11 @@ const MessagesPage = () => {
                                         )}
                                       </div>
                                     </div>
+                                  ) : message.content.startsWith('[CALL_END]:') ? (
+                                    <div className="d-flex align-items-center gap-2 py-1 px-2 opacity-75">
+                                      <span className="fs-6">🚫</span>
+                                      <span className="small fw-bold">Call Ended</span>
+                                    </div>
                                   ) : (
                                     <>
                                       {message.content}
@@ -895,7 +924,7 @@ const MessagesPage = () => {
           callType={activeCall.type}
           userID={user.id || user._id}
           userName={user.username}
-          onLeave={() => setActiveCall(null)}
+          onLeave={endActiveCall}
         />
       )}
     </Row>

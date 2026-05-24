@@ -22,6 +22,11 @@ const conversationSchema = new mongoose.Schema(
       type: Date,
       default: Date.now,
     },
+    // مرجع لآخر رسالة تم إرسالها (لتسريع العرض في قائمة المحادثات)
+    lastMessage: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Message",
+    },
     // إعدادات المحادثة لكل يوزر بشكل منفصل
     settings: [
       {
