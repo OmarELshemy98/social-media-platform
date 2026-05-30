@@ -19,13 +19,12 @@ import {
 import { 
   sendMessage
 } from "../features/messages/messagesSlice";
-import { 
-  addCommentToPost, 
-  deletePost
-} from "../features/posts/postsSlice";
-
+import { addCommentToPost, deletePost, createPost as createPostAction } from "../features/posts/postsSlice";
+import api from "../services/api";
 import { uploadImage } from "../services/uploadService";
 import PostCard from "../components/posts/PostCard";
+import PostComposer from "../components/posts/PostComposer";
+import SEO from "../components/layout/SEO";
 import { isOnline } from "../utils/timeUtils";
 
 const ProfilePage = () => {
@@ -36,6 +35,7 @@ const ProfilePage = () => {
   const { user: currentUser } = useSelector((state) => state.auth);
   const { profileUser, profilePosts, relationship, mutualFriends } = useSelector((state) => state.profile);
   const { messages } = useSelector((state) => state.messages);
+  const mode = useSelector((state) => state.theme?.mode || "light");
   
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState({ 
@@ -181,8 +181,23 @@ const ProfilePage = () => {
       animate={{ opacity: 1 }} 
       className="profile-page pb-5"
     >
+      <SEO 
+        title={profileUser ? `${profileUser.name} (@${profileUser.username})` : "Profile"} 
+        description={profileUser?.bio || `View ${profileUser?.name}'s profile on Crew.`}
+        image={profileUser?.avatarUrl}
+        schemaType="Person"
+        schemaData={profileUser ? {
+          "@type": "Person",
+          "name": profileUser.name,
+          "alternateName": profileUser.username,
+          "image": profileUser.avatarUrl,
+          "url": `https://crew-socialmedia.up.railway.app/profile/${profileUser.username}`,
+          "description": profileUser.bio,
+          "knowsLanguage": ["ar", "en"]
+        } : {}}
+      />
       {/* Profile Header */}
-      <Card className="dashboard-card border-0 shadow-lg overflow-hidden mb-4 p-0 rounded-5">
+      <Card className="dashboard-card border-0 shadow-2xl overflow-hidden mb-5 p-0 rounded-5 glass-panel">
         {/* Cover Photo */}
         <div className="profile-cover-container position-relative" style={{ height: '350px', background: 'var(--accent)' }}>
           <img 
@@ -190,105 +205,124 @@ const ProfilePage = () => {
             className="w-100 h-100 object-fit-cover" 
             alt="cover" 
           />
+          <div className="position-absolute inset-0 bg-gradient-to-t from-black opacity-30" />
           {isOwner && (
-            <label className="btn btn-glass btn-sm position-absolute bottom-0 end-0 m-4 rounded-pill px-3 shadow-lg">
+            <label className="glass-btn btn-sm position-absolute bottom-0 end-0 m-4 rounded-pill px-4 py-2 shadow-2xl cursor-pointer">
               <input type="file" hidden onChange={(e) => handleImageUpload(e, 'coverUrl')} disabled={isUploading} />
-              {isUploading ? <Spinner size="sm" /> : "📸 Edit Cover"}
+              {isUploading ? <Spinner size="sm" animation="grow" /> : "✨ Edit Canvas"}
             </label>
           )}
         </div>
 
-        <Card.Body className="p-4 pt-0 position-relative bg-white">
-          <div className="d-flex flex-column flex-md-row align-items-center align-items-md-end gap-4" style={{ marginTop: '-60px' }}>
+        <Card.Body className="p-4 pt-0 position-relative" style={{ background: mode === 'dark' ? 'var(--surface)' : '#fff' }}>
+          <div className="d-flex flex-column flex-md-row align-items-center align-items-md-end gap-4" style={{ marginTop: '-85px' }}>
             <motion.div 
-              whileHover={{ scale: 1.05 }}
+              whileHover={{ scale: 1.05, rotate: -2 }}
               className="profile-avatar-wrapper position-relative"
               style={{ zIndex: 10 }}
             >
-              <img 
-                src={form.avatarUrl || profileUser?.avatarUrl || `https://ui-avatars.com/api/?name=${profileUser?.username}&background=random`} 
-                className="rounded-circle border border-5 border-white shadow-lg bg-white" 
-                style={{ width: '170px', height: '170px', objectFit: 'cover' }} 
-              />
+              <div className="rounded-circle p-1 bg-gradient shadow-2xl">
+                <img 
+                  src={form.avatarUrl || profileUser?.avatarUrl || `https://ui-avatars.com/api/?name=${profileUser?.username}&background=random`} 
+                  className="rounded-circle border border-4 border-white shadow-lg bg-white" 
+                  style={{ width: '180px', height: '180px', objectFit: 'cover' }} 
+                />
+              </div>
               {isOwner && (
-                <label className="btn btn-primary btn-sm position-absolute bottom-0 end-0 rounded-circle p-2 shadow-lg d-flex align-items-center justify-content-center" style={{ width: '40px', height: '40px', border: '3px solid white' }}>
+                <label className="luxury-send-btn btn-sm position-absolute bottom-0 end-0 rounded-circle p-2 shadow-2xl d-flex align-items-center justify-content-center border-4 border-white" style={{ width: '45px', height: '45px' }}>
                   <input type="file" hidden onChange={(e) => handleImageUpload(e, 'avatarUrl')} disabled={isUploading} />
-                  {isUploading ? <Spinner size="sm" /> : "📷"}
+                  {isUploading ? <Spinner size="sm" /> : "📸"}
                 </label>
               )}
             </motion.div>
             
-            <div className="flex-grow-1 mb-md-3 text-center text-md-start pt-2 pt-md-0">
-              <h2 className="fw-800 mb-1 text-dark">{profileUser?.name}</h2>
-              <div className="d-flex align-items-center justify-content-center justify-content-md-start gap-2 mb-2">
-                <span className="text-primary fw-bold">@{profileUser?.username}</span>
-                {isOnline(profileUser?.lastActive) && <span className="badge rounded-pill bg-success px-2" style={{ fontSize: '0.6rem' }}>Online</span>}
-                {!isOwner && mutualFriends?.length > 0 && (
-                  <span className="text-muted small fw-bold">• {mutualFriends.length} mutual friends</span>
+            <div className="flex-grow-1 mb-md-4 text-center text-md-start pt-3 pt-md-0">
+              <div className="d-flex align-items-center justify-content-center justify-content-md-start gap-3 mb-2">
+                <h2 className="fw-900 mb-0 tracking-tight text-gradient">{profileUser?.name}</h2>
+                {isOnline(profileUser?.lastActive) && (
+                  <span className="badge rounded-pill bg-success bg-opacity-10 text-success border border-success border-opacity-25 px-3 py-2 fw-800" style={{ fontSize: '0.65rem' }}>
+                    ● ONLINE
+                  </span>
                 )}
               </div>
-              <p className="text-secondary small mb-0 max-w-500 fw-medium">{profileUser?.bio || "No bio yet."}</p>
-              
-              {/* Mutual Friends Mini List */}
-              {!isOwner && mutualFriends?.length > 0 && (
-                <div className="mt-2 d-flex align-items-center justify-content-center justify-content-md-start">
-                  <div className="d-flex flex-row-reverse justify-content-end me-2">
-                    {mutualFriends.slice(0, 3).map((friend, idx) => (
-                      <img 
-                        key={friend._id}
-                        src={friend.avatarUrl || `https://ui-avatars.com/api/?name=${friend.username}`}
-                        className="rounded-circle border border-2 border-white"
-                        style={{ width: '24px', height: '24px', marginLeft: idx === 0 ? 0 : '-8px', objectFit: 'cover' }}
-                        title={friend.name}
-                      />
-                    ))}
-                  </div>
-                  <span className="x-small text-muted" style={{ fontSize: '0.75rem' }}>
-                    {mutualFriends.length > 3 ? `and ${mutualFriends.length - 3} others` : ''}
+              <div className="d-flex align-items-center justify-content-center justify-content-md-start gap-3 mb-3">
+                <span className="text-muted fw-800 small tracking-widest text-uppercase">@{profileUser?.username}</span>
+                {!isOwner && mutualFriends?.length > 0 && (
+                  <span className="badge rounded-pill bg-primary bg-opacity-5 text-primary border border-primary border-opacity-10 px-3 py-2 fw-bold" style={{ fontSize: '0.7rem' }}>
+                    {mutualFriends.length} Mutual Connections
                   </span>
-                </div>
-              )}
+                )}
+              </div>
+              <p className="text-secondary mb-0 max-w-600 fw-medium opacity-75" style={{ fontSize: '1.05rem', lineHeight: '1.6' }}>
+                {profileUser?.bio || "Crafting a unique story..."}
+              </p>
             </div>
 
-            <div className="mb-md-3 d-flex gap-2 flex-wrap justify-content-center">
+            <div className="mb-md-4 d-flex gap-2 flex-wrap justify-content-center">
               {isOwner ? (
-                <Button variant={editing ? "outline-secondary" : "primary"} className="rounded-pill px-4 fw-bold shadow-sm" onClick={() => {
-                  if (!editing) setForm({ name: profileUser.name, bio: profileUser.bio, avatarUrl: profileUser.avatarUrl, coverUrl: profileUser.coverUrl });
-                  setEditing(!editing);
-                }}>
-                  {editing ? "Cancel" : "Edit Profile"}
+                <Button 
+                  variant={editing ? "outline-secondary" : "primary"} 
+                  className="rounded-pill px-5 py-3 fw-900 shadow-lg luxury-send-btn border-0"
+                  onClick={() => {
+                    if (!editing) setForm({ name: profileUser.name, bio: profileUser.bio, avatarUrl: profileUser.avatarUrl, coverUrl: profileUser.coverUrl });
+                    setEditing(!editing);
+                  }}
+                >
+                  {editing ? "Cancel" : "Edit Universe"}
                 </Button>
               ) : (
-                <>
+                <div className="d-flex gap-2">
                   {relationship === "friends" ? (
                     <Dropdown>
-                      <Dropdown.Toggle variant="light" className="rounded-pill px-4 fw-bold shadow-sm d-flex align-items-center gap-2">
-                        <span>✅ Friends</span>
+                      <Dropdown.Toggle variant="light" className="rounded-pill px-4 py-3 fw-900 shadow-sm d-flex align-items-center gap-2 border-0 bg-light">
+                        <span>✅ Crew</span>
                       </Dropdown.Toggle>
-                      <Dropdown.Menu className="rounded-4 border-0 shadow-lg p-2">
-                        <Dropdown.Item className="rounded-3 text-danger fw-bold" onClick={() => dispatch(unfriendUser(profileUser._id))}>
-                          Unfriend
+                      <Dropdown.Menu className="rounded-4 border-0 shadow-lg p-2 glass-panel">
+                        <Dropdown.Item className="rounded-3 text-danger fw-bold py-2" onClick={() => dispatch(unfriendUser(profileUser._id))}>
+                          Leave Crew
                         </Dropdown.Item>
                       </Dropdown.Menu>
                     </Dropdown>
                   ) : relationship === "request_sent" ? (
-                    <Button variant="secondary" className="rounded-pill px-4 fw-bold shadow-sm" disabled>
-                      Request Sent
+                    <Button variant="secondary" className="rounded-pill px-4 py-3 fw-900 shadow-sm border-0" disabled>
+                      Pending Request
                     </Button>
                   ) : relationship === "request_received" ? (
-                    <Button variant="success" className="rounded-pill px-4 fw-bold shadow-sm" onClick={() => dispatch(acceptFriendRequest(profileUser._id))}>
-                      Accept Request
+                    <Button variant="success" className="rounded-pill px-4 py-3 fw-900 shadow-sm border-0" onClick={() => dispatch(acceptFriendRequest(profileUser._id))}>
+                      Accept to Crew
                     </Button>
                   ) : (
-                    <Button variant="primary" className="rounded-pill px-4 fw-bold shadow-sm" onClick={() => dispatch(sendFriendRequest(profileUser._id))}>
-                      Add Friend
+                    <Button variant="primary" className="rounded-pill px-4 py-3 fw-900 shadow-lg luxury-send-btn border-0" onClick={() => dispatch(sendFriendRequest(profileUser._id))}>
+                      Connect +
                     </Button>
                   )}
-                  <Button variant="outline-primary" className="rounded-pill px-4 fw-bold shadow-sm" onClick={() => navigate(`/messages?username=${profileUser.username}`)}>Message</Button>
-                </>
+                  <Button variant="outline-primary" className="rounded-pill px-4 py-3 fw-900 border-2" onClick={() => navigate(`/messages?username=${profileUser.username}`)}>
+                    Message
+                  </Button>
+                </div>
               )}
             </div>
           </div>
+
+          {/* Luxury Stats Bar */}
+          <div className="profile-stats-bar mt-5 p-4 rounded-5 d-flex justify-content-around bg-light bg-opacity-50 border border-white border-opacity-20 shadow-inner">
+             <div className="text-center px-4">
+               <h4 className="fw-900 mb-0 text-gradient">{profilePosts?.length || 0}</h4>
+               <small className="text-muted fw-800 text-uppercase tracking-widest" style={{ fontSize: '0.65rem' }}>Moments</small>
+             </div>
+             <div className="vr opacity-10" />
+             <div className="text-center px-4">
+               <h4 className="fw-900 mb-0 text-gradient">{profileUser?.friends?.length || 0}</h4>
+               <small className="text-muted fw-800 text-uppercase tracking-widest" style={{ fontSize: '0.65rem' }}>Crew</small>
+             </div>
+             <div className="vr opacity-10" />
+             <div className="text-center px-4">
+               <h4 className="fw-900 mb-0 text-gradient">{profileUser?.albums?.length || 0}</h4>
+               <small className="text-muted fw-800 text-uppercase tracking-widest" style={{ fontSize: '0.65rem' }}>Albums</small>
+             </div>
+          </div>
+        </Card.Body>
+      </Card>
 
           {editing && (
             <motion.div initial={{ height: 0 }} animate={{ height: 'auto' }} className="mt-4 border-top pt-4 bg-light p-4 rounded-4">
@@ -456,8 +490,6 @@ const ProfilePage = () => {
               </Form>
             </motion.div>
           )}
-        </Card.Body>
-      </Card>
 
       {/* Profile Content Tabs */}
       <Tab.Container defaultActiveKey="posts">
@@ -472,6 +504,17 @@ const ProfilePage = () => {
           <Tab.Pane eventKey="posts">
             <Row className="g-4">
               <Col md={8}>
+                {isOwner && (
+                  <div className="mb-4">
+                    <PostComposer 
+                      onPostCreated={(payload) => {
+                        dispatch(createPostAction(payload));
+                        // إعادة جلب المنشورات للتأكد من ظهور الجديد
+                        setTimeout(() => dispatch(fetchProfileByUsername(targetUsername)), 500);
+                      }} 
+                    />
+                  </div>
+                )}
                 {profilePosts.length === 0 ? (
                   <Card className="dashboard-card text-center py-5 border-0 shadow-sm">
                     <Card.Body>

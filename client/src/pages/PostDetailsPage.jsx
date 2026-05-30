@@ -10,6 +10,7 @@ import { Container, Row, Col, Spinner, Button, Card } from "react-bootstrap";
 import { useDispatch, useSelector } from "react-redux";
 import api from "../services/api";
 import PostCard from "../components/posts/PostCard";
+import SEO from "../components/layout/SEO";
 import { 
   addCommentToPost, 
   deletePost
@@ -64,7 +65,12 @@ const PostDetailsPage = () => {
   }
 
   return (
-    <Container>
+    <Container className="py-4">
+      <SEO 
+        title={post ? `Post by @${post.author?.username}` : "Post Details"} 
+        description={post?.content?.substring(0, 160)}
+        image={post?.imageUrl}
+      />
       <Row className="justify-content-center">
         <Col xs={12} lg={8}>
           <Button 

@@ -12,6 +12,7 @@ import { useNavigate } from "react-router-dom";
 import api from "../services/api";
 // أمر تسجيل الخروج.
 import { logout } from "../features/auth/authSlice";
+import SEO from "../components/layout/SEO";
 
 const SettingsPage = () => {
   const dispatch = useDispatch();
@@ -110,8 +111,12 @@ const SettingsPage = () => {
   };
 
   return (
-    <Container className="py-4">
-      <h3 className="fw-bold mb-4">Settings</h3>
+    <Container className="settings-page py-5">
+      <SEO 
+        title="Settings" 
+        description="Manage your Crew account settings, privacy, and preferences. Customize your experience." 
+      />
+      <h2 className="fw-bold mb-4">Settings</h2>
       
       <Row className="g-4">
         {/* Left Column: Navigation/Tabs (Simulated with layout) */}

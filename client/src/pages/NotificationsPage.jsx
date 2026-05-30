@@ -14,6 +14,7 @@ import {
   markAllNotificationsRead,
   markNotificationRead,
 } from "../features/notifications/notificationsSlice";
+import SEO from "../components/layout/SEO";
 
 const NotificationsPage = () => {
   const dispatch = useDispatch();
@@ -57,9 +58,14 @@ const NotificationsPage = () => {
   };
 
   return (
-    <Card className="dashboard-card border-0 shadow-sm">
-      <Card.Body className="p-4">
-        <div className="d-flex justify-content-between align-items-center mb-4">
+    <div className="notifications-page pb-5">
+      <SEO 
+        title="Notifications" 
+        description="Stay updated with your Crew circle. See who liked your posts, commented, or sent you a friend request." 
+      />
+      <Card className="dashboard-card border-0 shadow-sm">
+        <Card.Body className="p-4">
+          <div className="d-flex justify-content-between align-items-center mb-4">
           <h4 className="fw-bold mb-0">
             Notifications 
             {unreadCount > 0 && <Badge bg="danger" pill className="ms-2 small">{unreadCount}</Badge>}
@@ -110,6 +116,7 @@ const NotificationsPage = () => {
         )}
       </Card.Body>
     </Card>
+    </div>
   );
 };
 

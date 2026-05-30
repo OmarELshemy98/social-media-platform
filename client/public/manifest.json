@@ -1,0 +1,26 @@
+{
+  "name": "Crew - Elite Social Network",
+  "short_name": "Crew",
+  "description": "Crew is a luxury social media platform for HD video calls, secure messaging, and elite networking.",
+  "icons": [
+    {
+      "src": "/vite.svg",
+      "sizes": "64x64 32x32 24x24 16x16",
+      "type": "image/svg+xml"
+    },
+    {
+      "src": "/vite.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml"
+    },
+    {
+      "src": "/vite.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml"
+    }
+  ],
+  "start_url": "/",
+  "display": "standalone",
+  "theme_color": "#6366f1",
+  "background_color": "#0b0f1a"
+}

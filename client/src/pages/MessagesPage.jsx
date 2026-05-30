@@ -29,6 +29,9 @@ import {
 import { uploadImage } from "../services/uploadService";
 import { playSound } from "../utils/soundUtils";
 import CallContainer from "../components/chat/CallContainer";
+import SEO from "../components/layout/SEO";
+
+const EMOJIS = ["😊", "😂", "❤️", "🔥", "👍", "🙌", "✨", "💯", "😮", "🎉", "🙏", "😎", "🤔", "🥺"];
 
 const MessagesPage = () => {
   const dispatch = useDispatch();
@@ -38,6 +41,7 @@ const MessagesPage = () => {
 
   // States محلية لكتابة رسالة جديدة أو بدء شات جديد.
   const [draft, setDraft] = useState("");
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [newChatUsername, setNewChatUsername] = useState("");
   const [showNewChat, setShowNewChat] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -71,6 +75,10 @@ const MessagesPage = () => {
   const fileInputRef = useRef(null);
   const videoPreviewRef = useRef(null);
   const timerRef = useRef(null);
+
+  const addEmoji = (emoji) => {
+    setDraft(prev => prev + emoji);
+  };
 
   // Group Creation logic
   const [groupSearchQuery, setGroupSearchQuery] = useState("");
@@ -168,13 +176,13 @@ const MessagesPage = () => {
     lastMessageCountRef.current = messages.length;
   }, [messages, user.id, user._id]);
 
-  // لو اليوزر فاتح محادثة معينة، بنعمل Polling (تحديث تلقائي) كل 8 ثواني عشان نجيب الرسايل الجديدة.
+  // لو اليوزر فاتح محادثة معينة، بنعمل Polling (تحديث تلقائي) كل 2 ثانية (بدلاً من 3) لسرعة ظهور الرسائل.
   useEffect(() => {
     if (!activeConversationId || !user) return;
 
     const interval = setInterval(() => {
       dispatch(fetchConversationMessages(activeConversationId));
-    }, 3000); // تقليل الوقت لـ 3 ثواني بدلاً من 8 لسرعة ظهور الرسائل
+    }, 2000); 
 
     return () => clearInterval(interval);
   }, [dispatch, activeConversationId, user]);
@@ -187,7 +195,7 @@ const MessagesPage = () => {
   const otherParticipant = useMemo(() => {
     if (!activeConversation || !user) return null;
     return activeConversation.participants?.find(
-      (p) => String(p._id) !== String(user.id || user._id)
+      (p) => String(p?._id || p) !== String(user.id || user._id)
     );
   }, [activeConversation, user]);
 
@@ -422,6 +430,10 @@ const MessagesPage = () => {
 
   return (
     <Row className="g-3">
+      <SEO 
+        title="Messages" 
+        description="Secure HD calls and real-time messaging with your Crew members." 
+      />
       <Col xs={12} md={4} className={activeConversationId ? "d-none d-md-block" : ""}>
         <Card className="dashboard-card h-100 border-0 shadow-sm overflow-hidden" style={{ borderRadius: '1.5rem' }}>
           <Card.Body className="p-4">
@@ -431,22 +443,22 @@ const MessagesPage = () => {
                 <Button 
                   variant="primary" 
                   size="sm" 
-                  className="rounded-circle shadow-sm"
-                  style={{ width: '32px', height: '32px', padding: 0 }}
+                  className="rounded-circle shadow-sm d-flex align-items-center justify-content-center"
+                  style={{ width: '35px', height: '35px', padding: 0 }}
                   onClick={() => setShowNewChat(!showNewChat)}
                   title="New Chat"
                 >
-                  +
+                  <span style={{ fontSize: '1.2rem' }}>✉️</span>
                 </Button>
                 <Button 
                   variant="outline-primary" 
                   size="sm" 
                   className="rounded-circle shadow-sm d-flex align-items-center justify-content-center"
-                  style={{ width: '32px', height: '32px', padding: 0 }}
+                  style={{ width: '35px', height: '35px', padding: 0 }}
                   onClick={() => setShowGroupModal(true)}
                   title="Create Group"
                 >
-                  👥
+                  <span style={{ fontSize: '1.2rem' }}>👥</span>
                 </Button>
               </div>
             </div>
@@ -730,52 +742,65 @@ const MessagesPage = () => {
                             <>
                               {message.messageType === "text" && (
                                 <div className="chat-content">
-                                  {message.content.startsWith('[CALL_INVITE]:') ? (
-                                    <div className="call-invite-bubble p-3 rounded-4" style={{ background: isMine ? 'rgba(255,255,255,0.1)' : 'rgba(var(--bs-primary-rgb), 0.1)', border: '1px solid rgba(255,255,255,0.2)' }}>
-                                      <div className="d-flex align-items-center gap-3 mb-3">
-                                        <div className="call-icon-animate fs-2">
-                                          {message.content.split(':')[2] === 'video' ? '📹' : '📞'}
-                                        </div>
-                                        <div className="flex-grow-1">
-                                          <div className="fw-800 small text-uppercase tracking-wider">
-                                            {message.content.split(':')[2] === 'video' ? 'Video Call' : 'Voice Call'}
+                                  {message.content.startsWith('[CALL_INVITE]:') ? (() => {
+                                    const parts = message.content.split(':');
+                                    const roomID = parts[1];
+                                    const type = parts[2];
+                                    
+                                    // البحث في كل الرسايل المتاحة عن إشارة انتهاء المكالمة دي
+                                    const isEnded = messages.some(m => 
+                                      m.content === `[CALL_END]:${roomID}` || 
+                                      m.content.startsWith(`[CALL_END]:${roomID}`)
+                                    );
+                                    
+                                    return (
+                                      <div className="call-invite-bubble p-3 rounded-4" style={{ 
+                                        background: isMine ? 'rgba(255,255,255,0.1)' : 'rgba(var(--bs-primary-rgb), 0.1)', 
+                                        border: '1px solid rgba(255,255,255,0.2)',
+                                        opacity: isEnded ? 0.6 : 1,
+                                        filter: isEnded ? 'grayscale(0.5)' : 'none'
+                                      }}>
+                                        <div className="d-flex align-items-center gap-3 mb-2">
+                                          <div className={`fs-2 ${!isEnded ? 'call-icon-animate' : ''}`} style={{ opacity: isEnded ? 0.5 : 1 }}>
+                                            {type === 'video' ? '📹' : '📞'}
                                           </div>
-                                          <div className="x-small opacity-75 fw-semibold">
-                                            {isMine ? 'Waiting for answer...' : 'Incoming Call...'}
+                                          <div className="flex-grow-1">
+                                            <div className="fw-800 small text-uppercase tracking-wider">
+                                              {type === 'video' ? 'Video Call' : 'Voice Call'}
+                                            </div>
+                                            <div className="x-small opacity-75 fw-semibold">
+                                              {isEnded ? (isMine ? 'Call Ended' : 'Missed Call') : (isMine ? 'Waiting for answer...' : 'Incoming Call...')}
+                                            </div>
                                           </div>
                                         </div>
-                                      </div>
-                                      <div className="d-flex gap-2">
-                                        {!isMine && (
-                                          <Button 
-                                            variant="success" 
-                                            size="sm" 
-                                            className="flex-grow-1 rounded-pill fw-800 shadow-sm py-2 border-0"
-                                            style={{ background: 'linear-gradient(45deg, #28a745, #20c997)' }}
-                                            onClick={() => {
-                                              const [_, roomID, type] = message.content.split(':');
-                                              setActiveCall({ roomID, type, conversationId: activeConversationId });
-                                            }}
-                                          >
-                                            Answer Call
-                                          </Button>
-                                        )}
-                                        {isMine && (
-                                          <Button 
-                                            variant="outline-light" 
-                                            size="sm" 
-                                            className="flex-grow-1 rounded-pill fw-800 py-2 border-opacity-25"
-                                            onClick={() => {
-                                              const [_, roomID, type] = message.content.split(':');
-                                              setActiveCall({ roomID, type, conversationId: activeConversationId });
-                                            }}
-                                          >
-                                            Rejoin Call
-                                          </Button>
+                                        {!isEnded && (
+                                          <div className="d-flex gap-2 mt-2">
+                                            {!isMine && (
+                                              <Button 
+                                                variant="success" 
+                                                size="sm" 
+                                                className="flex-grow-1 rounded-pill fw-800 shadow-sm py-2 border-0"
+                                                style={{ background: 'linear-gradient(45deg, #28a745, #20c997)' }}
+                                                onClick={() => setActiveCall({ roomID, type, conversationId: activeConversationId })}
+                                              >
+                                                Answer Call
+                                              </Button>
+                                            )}
+                                            {isMine && (
+                                              <Button 
+                                                variant="outline-light" 
+                                                size="sm" 
+                                                className="flex-grow-1 rounded-pill fw-800 py-2 border-opacity-25"
+                                                onClick={() => setActiveCall({ roomID, type, conversationId: activeConversationId })}
+                                              >
+                                                Rejoin Call
+                                              </Button>
+                                            )}
+                                          </div>
                                         )}
                                       </div>
-                                    </div>
-                                  ) : message.content.startsWith('[CALL_END]:') ? (
+                                    );
+                                  })() : message.content.startsWith('[CALL_END]:') ? (
                                     <div className="d-flex align-items-center gap-2 py-1 px-2 opacity-75">
                                       <span className="fs-6">🚫</span>
                                       <span className="small fw-bold">Call Ended</span>
@@ -888,7 +913,7 @@ const MessagesPage = () => {
                   <div className="d-flex align-items-center gap-2 bg-light p-2 rounded-pill shadow-inner">
                     <Dropdown drop="up">
                       <Dropdown.Toggle variant="link" className="p-0 text-decoration-none fs-4 shadow-none no-caret mx-2">
-                        📎
+                        <span className="hover-scale-sm">📎</span>
                       </Dropdown.Toggle>
                       <Dropdown.Menu className="border-0 shadow-lg p-2 rounded-4">
                         <Dropdown.Item onClick={() => fileInputRef.current.click()} className="rounded-3 py-2">
@@ -917,14 +942,45 @@ const MessagesPage = () => {
                       </div>
                     ) : (
                       <>
-                        <Form.Control 
-                          value={draft} 
-                          onChange={(e) => setDraft(e.target.value)}
-                          placeholder="Type a message..."
-                          className="border-0 bg-transparent shadow-none"
-                        />
+                        <div className="flex-grow-1 position-relative">
+                          <Form.Control 
+                            value={draft} 
+                            onChange={(e) => setDraft(e.target.value)}
+                            placeholder="Type a message..."
+                            className="border-0 bg-transparent shadow-none"
+                          />
+                          <Button 
+                            variant="link" 
+                            className="position-absolute top-50 end-0 translate-middle-y p-0 text-decoration-none shadow-none opacity-50 me-2"
+                            onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                          >
+                            😊
+                          </Button>
+                          
+                          <AnimatePresence>
+                            {showEmojiPicker && (
+                              <motion.div 
+                                initial={{ opacity: 0, y: -10 }}
+                                animate={{ opacity: 1, y: -50 }}
+                                exit={{ opacity: 0, y: -10 }}
+                                className="position-absolute end-0 p-2 glass-panel rounded-pill shadow-lg d-flex gap-2"
+                                style={{ zIndex: 100, bottom: '100%', right: 0 }}
+                              >
+                                {EMOJIS.map(e => (
+                                  <span 
+                                    key={e} 
+                                    className="cursor-pointer fs-5 hover-scale-sm"
+                                    onClick={() => addEmoji(e)}
+                                  >
+                                    {e}
+                                  </span>
+                                ))}
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
+                        </div>
                         <Button variant="link" className="p-0 text-decoration-none fs-4 shadow-none me-2" onClick={startAudioRecording} title="Record Audio">
-                          🎙️
+                          <span className="hover-scale-sm">🎙️</span>
                         </Button>
                       </>
                     )}
@@ -932,11 +988,11 @@ const MessagesPage = () => {
                     <Button 
                       type="submit" 
                       variant="primary" 
-                      className="rounded-circle shadow-sm d-flex align-items-center justify-content-center"
-                      style={{ width: '40px', height: '40px', padding: 0 }}
+                      className="rounded-circle shadow-sm d-flex align-items-center justify-content-center luxury-send-btn"
+                      style={{ width: '45px', height: '45px', padding: 0 }}
                       disabled={(!draft.trim() && !isRecordingAudio) || isUploading}
                     >
-                      {isUploading ? <Spinner animation="border" size="sm" /> : "🚀"}
+                      {isUploading ? <Spinner animation="border" size="sm" /> : <span style={{ fontSize: '1.2rem', marginLeft: '2px' }}>🚀</span>}
                     </Button>
                   </div>
                 </Form>
@@ -1200,6 +1256,17 @@ const MessagesPage = () => {
         .active-scale { transform: scale(1.02); }
         .transition-all { transition: all 0.2s ease-in-out; }
         .hover-scale:hover { transform: scale(1.1); }
+        .hover-scale-sm { transition: transform 0.2s ease; display: inline-block; }
+        .hover-scale-sm:hover { transform: scale(1.2); }
+        .luxury-send-btn {
+          background: linear-gradient(135deg, var(--bs-primary), #00d2ff) !important;
+          border: none !important;
+          transition: all 0.3s ease !important;
+        }
+        .luxury-send-btn:hover:not(:disabled) {
+          transform: rotate(-10deg) scale(1.1);
+          box-shadow: 0 5px 15px rgba(var(--bs-primary-rgb), 0.4) !important;
+        }
       `}</style>
     </Row>
   );

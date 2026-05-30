@@ -18,6 +18,8 @@ const REACTIONS = [
   { type: "angry", emoji: "😠", label: "Angry", color: "text-danger" },
 ];
 
+const EMOJIS = ["😊", "😂", "❤️", "🔥", "👍", "🙌", "✨", "💯", "😮", "🎉"];
+
 const PostCard = ({ post, currentUserId, onComment, onDelete }) => {
   const dispatch = useDispatch();
   const [comment, setComment] = useState("");
@@ -26,10 +28,13 @@ const PostCard = ({ post, currentUserId, onComment, onDelete }) => {
   const [showReactions, setShowReactions] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
   const [shareContent, setShareContent] = useState("");
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
 
   const myReaction = post?.reactions?.find(r => String(r.user) === String(currentUserId));
   const isOwner = String(post?.author?._id || post?.author) === String(currentUserId);
-  const isAdmin = useSelector(state => state.auth.user?.role === "admin");
+  const { user } = useSelector(state => state.auth);
+  const isAdmin = user?.role === "admin";
+  const mode = useSelector(state => state.theme?.mode || "light");
 
   const handleReaction = (type) => {
     if (!post?._id) return;
@@ -51,6 +56,11 @@ const PostCard = ({ post, currentUserId, onComment, onDelete }) => {
     onComment(post._id, comment.trim());
     playSound("message_sent");
     setComment("");
+    setShowEmojiPicker(false);
+  };
+
+  const addEmoji = (emoji) => {
+    setComment(prev => prev + emoji);
   };
 
   const handleEditComment = (cId, content) => {
@@ -84,19 +94,25 @@ const PostCard = ({ post, currentUserId, onComment, onDelete }) => {
         <Card.Body className="p-4">
           <div className="d-flex justify-content-between align-items-center mb-4">
             <div className="d-flex align-items-center gap-3">
-              <motion.img 
-                whileHover={{ scale: 1.1 }}
-                src={post.author?.avatarUrl || `https://ui-avatars.com/api/?name=${post.author?.username || 'User'}&background=random`} 
-                className="rounded-circle border" 
-                style={{ width: '48px', height: '48px', objectFit: 'cover' }} 
-              />
+              <Link to={`/profile/${post.author?.username || post.author}`} className="avatar-luxury-border p-1 rounded-circle bg-gradient">
+                <motion.img 
+                  whileHover={{ scale: 1.1, rotate: 5 }}
+                  src={post.author?.avatarUrl || `https://ui-avatars.com/api/?name=${post.author?.username || 'User'}&background=random`} 
+                  className="rounded-circle border-white border-2" 
+                  style={{ width: '52px', height: '52px', objectFit: 'cover' }} 
+                />
+              </Link>
               <div>
-                <Link to={`/profile/${post?.author?.username}`} className="fw-bold text-decoration-none text-dark d-block fs-6">
-                  @{post?.author?.username || "unknown"}
+                <Link to={`/profile/${post.author?.username || post.author}`} className="fw-800 text-decoration-none text-dark d-block fs-6 tracking-tight">
+                  @{post.author?.username || "unknown"}
                 </Link>
-                <small className="text-muted" style={{ fontSize: '0.75rem' }}>
-                  {post?.createdAt ? new Date(post.createdAt).toLocaleDateString() : ""}
-                </small>
+                <div className="d-flex align-items-center gap-2">
+                  <small className="text-muted fw-semibold" style={{ fontSize: '0.7rem' }}>
+                    {post?.createdAt ? new Date(post.createdAt).toLocaleDateString() : ""}
+                  </small>
+                  <span className="text-muted" style={{ fontSize: '0.5rem' }}>•</span>
+                  <span className="badge rounded-pill bg-light text-muted fw-bold" style={{ fontSize: '0.6rem' }}>Public</span>
+                </div>
               </div>
             </div>
             {(isOwner || isAdmin) && (
@@ -214,18 +230,47 @@ const PostCard = ({ post, currentUserId, onComment, onDelete }) => {
 
           <div className="comments-section mt-4 pt-3">
             <Form onSubmit={submitComment} className="mb-4">
-              <div className="d-flex gap-2">
-                <Form.Control 
-                  className="rounded-pill border-0 bg-light px-4 py-2" 
-                  placeholder="Share your thoughts..." 
-                  value={comment}
-                  onChange={(e) => setComment(e.target.value)}
-                  style={{ fontSize: '0.9rem' }}
-                />
+              <div className="d-flex gap-2 align-items-center">
+                <div className="flex-grow-1 position-relative">
+                  <Form.Control 
+                    className="rounded-pill border-0 bg-light px-4 py-2 pe-5"
+                    placeholder="Share your thoughts..." 
+                    value={comment}
+                    onChange={(e) => setComment(e.target.value)}
+                    style={{ fontSize: '0.9rem' }}
+                  />
+                  <Button 
+                    variant="link" 
+                    className="position-absolute top-50 end-0 translate-middle-y me-3 p-0 text-decoration-none shadow-none opacity-50"
+                    onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                  >
+                    😊
+                  </Button>
+                </div>
                 <Button type="submit" variant="primary" className="rounded-circle p-0 d-flex align-items-center justify-content-center shadow-sm" style={{ width: '40px', height: '40px' }}>
                   <span className="fs-5">🚀</span>
                 </Button>
               </div>
+              <AnimatePresence>
+                {showEmojiPicker && (
+                  <motion.div 
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: 10 }}
+                    className="mt-2 p-2 bg-light rounded-4 d-flex gap-2 flex-wrap"
+                  >
+                    {EMOJIS.map(e => (
+                      <span 
+                        key={e} 
+                        className="cursor-pointer fs-5"
+                        onClick={() => addEmoji(e)}
+                      >
+                        {e}
+                      </span>
+                    ))}
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </Form>
 
             <div className="comments-list">

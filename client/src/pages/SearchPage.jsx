@@ -19,6 +19,7 @@ import {
 } from "../features/posts/postsSlice";
 
 import { motion, AnimatePresence } from "framer-motion";
+import SEO from "../components/layout/SEO";
 
 const SearchPage = () => {
   const [query, setQuery] = useState(""); // كلمة البحث اللي اليوزر بيكتبها.
@@ -40,6 +41,10 @@ const SearchPage = () => {
 
   return (
     <div className="search-page pb-5">
+      <SEO 
+        title="Search & Explore" 
+        description="Search for friends, discover new communities, and explore trending topics on Crew." 
+      />
       <Row className="justify-content-center mb-5">
         <Col xs={12} lg={8}>
           <motion.div

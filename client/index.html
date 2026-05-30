@@ -1,17 +1,40 @@
 <!doctype html>
-<html lang="en">
+<html lang="ar" dir="rtl">
   <!-- 
     ده ملف الـ HTML الوحيد في الموقع.
     كل اللي فيه هو `div` واحد اسمه `root` وده اللي الـ React بيستخدمه عشان يعرض فيه كل صفحات الموقع.
   -->
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#6366f1" />
+    <meta name="description" content="Crew - The Elite Social Media Platform for HD Video Calls, Secure Messaging, and Luxury Networking. Connect with creative professionals and build your circle." />
+    <meta name="keywords" content="social media, crew, networking, video calls, group chat, elite, luxury, تواصل اجتماعي, منصه, كرو, سوشيال ميديا, premium community, hd calling" />
+    <meta name="robots" content="index, follow" />
+    <link rel="manifest" href="/manifest.json" />
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <title>Crew | Connect with your world</title>
+    
+    <!-- Schema.org Structured Data for Google Search -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      "name": "Crew",
+      "alternateName": "Crew Social Media",
+      "url": "https://crew-socialmedia.up.railway.app",
+      "description": "Crew is a luxury social media platform for HD video calls, secure messaging, and elite networking. Connect with creative professionals.",
+      "potentialAction": {
+        "@type": "SearchAction",
+        "target": "https://crew-socialmedia.up.railway.app/search?q={search_term_string}",
+        "query-input": "required name=search_term_string"
+      },
+      "applicationCategory": "SocialNetworking"
+    }
+    </script>
   </head>
   <body>
     <!-- هذا هو المكان الذي سيعيش فيه تطبيقنا -->

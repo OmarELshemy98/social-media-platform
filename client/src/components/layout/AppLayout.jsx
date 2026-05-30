@@ -43,11 +43,11 @@ const AppLayout = () => {
     dispatch(fetchNotifications());
     dispatch(fetchConversations());
 
-    // تحديث دوري كل 4 ثواني (أسرع قليلاً للمكالمات)
+    // تحديث دوري كل 2 ثانية (أسرع للرسائل والمكالمات)
     const interval = setInterval(() => {
       dispatch(fetchNotifications());
       dispatch(fetchConversations());
-    }, 4000);
+    }, 2000);
     return () => clearInterval(interval);
   }, [dispatch, user]);
 
@@ -114,7 +114,19 @@ const AppLayout = () => {
     }
   };
 
-  const handleDeclineCall = () => {
+  const handleDeclineCall = async () => {
+    if (incomingCall) {
+      const { roomID, conversationId } = incomingCall;
+      try {
+        await api.post('/messages', {
+          conversationId,
+          content: `[CALL_END]:${roomID}`,
+          messageType: 'text'
+        });
+      } catch (err) {
+        console.error("Failed to send decline message:", err);
+      }
+    }
     setIncomingCall(null);
     stopSound('ringtone');
     playSound('call_end');
@@ -134,35 +146,45 @@ const AppLayout = () => {
           </Navbar.Brand>
           <Navbar.Toggle className="border-0 shadow-none" />
           <Navbar.Collapse>
-            <Nav className="mx-auto gap-lg-2">
-              <Nav.Link as={NavLink} to="/" className="px-3 fw-semibold">
-                Feed
+            <Nav className="mx-auto gap-lg-3 nav-luxury-icons">
+              <Nav.Link as={NavLink} to="/" className="nav-icon-link" title="Feed">
+                <span className="nav-icon">🏠</span>
+                <span className="nav-label d-lg-none">Feed</span>
               </Nav.Link>
-              <Nav.Link as={NavLink} to="/profile" className="px-3 fw-semibold">
-                Profile
+              <Nav.Link as={NavLink} to="/profile" className="nav-icon-link" title="Profile">
+                <span className="nav-icon">👤</span>
+                <span className="nav-label d-lg-none">Profile</span>
               </Nav.Link>
-              <Nav.Link as={NavLink} to="/notifications" className="px-3 fw-semibold position-relative">
-                Notifications
+              <Nav.Link as={NavLink} to="/notifications" className="nav-icon-link position-relative" title="Notifications">
+                <span className="nav-icon">🔔</span>
                 {unreadCount > 0 && (
-                  <Badge pill bg="danger" className="position-absolute top-0 start-100 translate-middle border border-2 border-surface" style={{ fontSize: '0.65rem', padding: '0.35em 0.6em' }}>
+                  <Badge pill bg="danger" className="position-absolute nav-badge">
                     {unreadCount}
                   </Badge>
                 )}
+                <span className="nav-label d-lg-none">Notifications</span>
               </Nav.Link>
-              <Nav.Link as={NavLink} to="/messages" className="px-3 fw-semibold">
-                Messages
+              <Nav.Link as={NavLink} to="/messages" className="nav-icon-link" title="Messages">
+                <span className="nav-icon">💬</span>
+                <span className="nav-label d-lg-none">Messages</span>
               </Nav.Link>
-              <Nav.Link as={NavLink} to="/search" className="px-3 fw-semibold">
-                Search
+              <Nav.Link as={NavLink} to="/search" className="nav-icon-link" title="Search">
+                <span className="nav-icon">🔍</span>
+                <span className="nav-label d-lg-none">Search</span>
               </Nav.Link>
               {user?.role === "admin" && (
-                <Nav.Link as={NavLink} to="/admin" className="px-3 fw-semibold text-primary">
-                  Dashboard
+                <Nav.Link as={NavLink} to="/admin" className="nav-icon-link admin-link" title="Admin Dashboard">
+                  <span className="nav-icon">🛡️</span>
+                  <span className="nav-label d-lg-none">Admin</span>
                 </Nav.Link>
               )}
             </Nav>
             <div className="d-flex align-items-center gap-3">
-              <div className="user-nav-pill d-none d-xl-flex">
+              <div 
+                className="user-nav-pill d-none d-xl-flex cursor-pointer" 
+                onClick={() => navigate(`/profile/${user?.username}`)}
+                style={{ cursor: 'pointer' }}
+              >
                 <img 
                   src={user?.avatarUrl || `https://ui-avatars.com/api/?name=${user?.username || 'User'}&background=random`} 
                   className="rounded-circle" 
@@ -211,6 +233,80 @@ const AppLayout = () => {
           </motion.div>
         </AnimatePresence>
       </Container>
+      <style>{`
+        .dashboard-nav {
+          background: ${mode === 'light' ? 'rgba(255, 255, 255, 0.8)' : 'rgba(26, 26, 26, 0.8)'} !important;
+          backdrop-filter: blur(15px);
+          border-bottom: 1px solid ${mode === 'light' ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.05)'};
+          padding: 0.8rem 0;
+        }
+        .nav-icon-link {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          width: 45px;
+          height: 45px;
+          border-radius: 14px;
+          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+          color: ${mode === 'light' ? '#666' : '#aaa'} !important;
+          position: relative;
+        }
+        .nav-icon {
+          font-size: 1.4rem;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+        .nav-icon-link:hover {
+          background: rgba(var(--bs-primary-rgb), 0.1);
+          color: var(--bs-primary) !important;
+          transform: translateY(-2px);
+        }
+        .nav-icon-link.active {
+          background: var(--bs-primary);
+          color: white !important;
+          box-shadow: 0 8px 20px rgba(var(--bs-primary-rgb), 0.3);
+        }
+        .nav-badge {
+          top: 5px !important;
+          right: 5px !important;
+          font-size: 0.6rem !important;
+          padding: 0.3em 0.5em !important;
+          border: 2px solid ${mode === 'light' ? 'white' : '#1a1a1a'};
+          transform: none !important;
+        }
+        .user-nav-pill {
+          background: ${mode === 'light' ? 'rgba(0,0,0,0.03)' : 'rgba(255,255,255,0.03)'};
+          padding: 5px 15px 5px 5px;
+          border-radius: 25px;
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          border: 1px solid ${mode === 'light' ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.05)'};
+          color: ${mode === 'light' ? '#000' : '#fff'};
+        }
+        .admin-link.active {
+          background: #212529 !important;
+          box-shadow: 0 8px 20px rgba(0,0,0,0.2) !important;
+        }
+        @media (max-width: 991.98px) {
+          .nav-icon-link {
+            width: 100%;
+            justify-content: flex-start;
+            height: auto;
+            padding: 12px 20px;
+            border-radius: 12px;
+            margin-bottom: 5px;
+          }
+          .nav-label {
+            margin-left: 15px;
+            font-weight: 600;
+          }
+          .nav-icon-link.active {
+            box-shadow: none;
+          }
+        }
+      `}</style>
     </div>
   );
 };

@@ -12,6 +12,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { useGoogleLogin } from "@react-oauth/google";
 import { motion, AnimatePresence } from "framer-motion";
 import { clearAuthError, registerUser, loginWithGoogle } from "../features/auth/authSlice";
+import SEO from "../components/layout/SEO";
 
 const RegisterPage = () => {
   const dispatch = useDispatch();
@@ -47,6 +48,10 @@ const RegisterPage = () => {
 
   return (
     <Container className="auth-page py-5">
+      <SEO 
+        title="Join Crew" 
+        description="Create your Crew account today. Join the elite social network for HD communication and real-time networking." 
+      />
       <Row className="justify-content-center w-100 m-0">
         <Col xs={12} sm={10} md={8} lg={6} xl={5}>
           <motion.div

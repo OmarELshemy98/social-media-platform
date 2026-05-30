@@ -9,6 +9,7 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { Provider } from "react-redux";
 import { GoogleOAuthProvider } from "@react-oauth/google";
+import { HelmetProvider } from "react-helmet-async";
 import { store } from "./app/store";
 import { RouterProvider } from "react-router-dom";
 import router from "./app/router";
@@ -38,9 +39,11 @@ if (!GOOGLE_CLIENT_ID) {
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <Provider store={store}>
-      <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID || "missing-id"}>
-        <RouterProvider router={router} />
-      </GoogleOAuthProvider>
+      <HelmetProvider>
+        <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID || "missing-id"}>
+          <RouterProvider router={router} />
+        </GoogleOAuthProvider>
+      </HelmetProvider>
     </Provider>
   </StrictMode>,
 )

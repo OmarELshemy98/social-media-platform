@@ -28,6 +28,7 @@ import { fetchSuggestions } from "../features/profile/profileSlice";
 import PostCard from "../components/posts/PostCard";
 import PostComposer from "../components/posts/PostComposer";
 import StoriesSection from "../components/layout/StoriesSection";
+import SEO from "../components/layout/SEO";
 
 const FeedPage = () => {
   const dispatch = useDispatch();
@@ -48,6 +49,21 @@ const FeedPage = () => {
 
   return (
     <Row className="g-4">
+      <SEO 
+        title="Home Feed" 
+        description="Check out what's happening in your Crew circle. Share posts, photos, and connect with elite users." 
+        schemaType="SocialNetworkingService"
+        schemaData={{
+          "@type": "SocialNetworkingService",
+          "name": "Crew",
+          "url": "https://crew-socialmedia.up.railway.app",
+          "description": "A luxury social media platform for HD video calls, secure messaging, and elite networking.",
+          "sameAs": [
+            "https://twitter.com/crewapp",
+            "https://instagram.com/crewapp"
+          ]
+        }}
+      />
       <Col xs={12} lg={8}>
         {/* قسم الستوري */}
         <div className="mb-4">
@@ -56,7 +72,7 @@ const FeedPage = () => {
         
         {/* صندوق كتابة بوست جديد */}
         <PostComposer 
-          onPostCreated={(content, media) => dispatch(createPost({ content, media }))} 
+          onPostCreated={(payload) => dispatch(createPost(payload))} 
         />
 
         {/* عرض البوستات أو رسالة تحميل أو خطأ */}

@@ -12,6 +12,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { useGoogleLogin } from "@react-oauth/google";
 import { motion, AnimatePresence } from "framer-motion";
 import { clearAuthError, loginUser, loginWithGoogle } from "../features/auth/authSlice";
+import SEO from "../components/layout/SEO";
 
 const LoginPage = () => {
   const dispatch = useDispatch();
@@ -40,6 +41,10 @@ const LoginPage = () => {
 
   return (
     <Container className="auth-page py-5">
+      <SEO 
+        title="Login" 
+        description="Login to your Crew account and connect with your world. Secure and fast access to your social circle." 
+      />
       <Row className="justify-content-center w-100 m-0">
         <Col xs={12} sm={10} md={8} lg={5} xl={4}>
           <motion.div
